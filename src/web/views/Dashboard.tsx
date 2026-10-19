@@ -23,7 +23,8 @@ export function Dashboard({
   const today = localToday();
   const stats = summarize(data.applications, today);
 
-  if (!data.loading && stats.total === 0)
+  if (data.loading) return null;
+  if (stats.total === 0)
     return (
       <div className="empty-panel">
         <strong>No applications yet</strong>
