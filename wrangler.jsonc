@@ -41,6 +41,6 @@
   "vars": {
     "ACCESS_AUD": "ddc62324f80b4fde42600f5819fb6c463357a1267e6ee81a50e116d9d00070e4",
     "ACCESS_TEAM_DOMAIN": "https://jarenkempton.cloudflareaccess.com",
-    "ACCESS_SERVICE_CLIENT_ID": "",
+    "ACCESS_SERVICE_CLIENT_ID": "bb2fd392a5c7240d1214679a2f96ca9c.access",
   },
 }
