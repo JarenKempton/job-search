@@ -22,7 +22,7 @@ Local requests use Wrangler's Access mock (`developer@localhost`).
 2. Zero Trust → Access → Applications → add a self-hosted app for `job-search.jarenkempton.dev` (whole hostname) with an Allow policy for your email only. Put its **Application Audience (AUD) tag** in `ACCESS_AUD` in `wrangler.jsonc`.
 3. Create a GitHub environment `production` with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (Workers deploy + routes, D1 edit).
 
-After that, every green CI run on `main` applies migrations and deploys. `pnpm deploy` does the same from your machine.
+After that, every green CI run on `main` applies migrations and deploys. `pnpm run deploy` does the same from your machine.
 
 The Worker refuses every request without a verified Access JWT for that audience, so a misconfigured Access app fails closed.
 
