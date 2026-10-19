@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { applicationRoutes } from "./applications/routes";
 import type { AppEnv, Env } from "./env";
-import { requireAccess } from "./lib/cloudflare-access";
+import { mayAccess, requireAccess } from "./lib/cloudflare-access";
 import { ApiError, errorResponse } from "./lib/http";
 import { normalizeError } from "./lib/normalize-error";
 
@@ -28,8 +28,13 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     let response: Response;
     try {
-      if ((await requireAccess(request, env, ctx)) !== "user")
-        throw new ApiError(403, "user_required", "Sign in to continue.");
+      const principal = await requireAccess(request, env, ctx);
+      if (!mayAccess(principal, env, new URL(request.url).pathname))
+        throw new ApiError(
+          403,
+          "forbidden",
+          "This client may not access that.",
+        );
       response = await app.fetch(request, env);
     } catch (error) {
       response = errorResponse(error);

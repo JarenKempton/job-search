@@ -26,6 +26,14 @@ After that, every green CI run on `main` applies migrations and deploys. `pnpm r
 
 The Worker refuses every request without a verified Access JWT for that audience, so a misconfigured Access app fails closed.
 
+## Claude (MCP)
+
+`mcp/server.ts` is a stdio MCP server with `list_applications`, `get_application`, `add_application`, `update_application` and `log_event`. It calls the live API with a Cloudflare Access service token read from `~/.config/job-search/access.env` (`CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`). The Worker accepts only the service token whose client ID is `ACCESS_SERVICE_CLIENT_ID` in `wrangler.jsonc`, and only on `/api/*`.
+
+```sh
+claude mcp add job-search -s user -- node /home/jaren/.t3/projects/job-search/mcp/server.ts
+```
+
 ## Checks
 
 ```sh

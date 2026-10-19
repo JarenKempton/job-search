@@ -14,7 +14,22 @@ function getAccessKeySet(teamDomain: string) {
   return keySet;
 }
 
-export type AccessPrincipal = "user" | "service";
+export type AccessPrincipal =
+  | { kind: "user" }
+  | { kind: "service"; clientId: string };
+
+export function mayAccess(
+  principal: AccessPrincipal,
+  env: Pick<Env, "ACCESS_SERVICE_CLIENT_ID">,
+  path: string,
+): boolean {
+  if (principal.kind === "user") return true;
+  return (
+    Boolean(env.ACCESS_SERVICE_CLIENT_ID) &&
+    principal.clientId === env.ACCESS_SERVICE_CLIENT_ID &&
+    path.startsWith("/api/")
+  );
+}
 
 export async function requireAccess(
   request: Request,
@@ -30,7 +45,7 @@ export async function requireAccess(
         "Cloudflare Access did not provide an authenticated identity.",
       );
     }
-    return "user";
+    return { kind: "user" };
   }
 
   const token = request.headers.get("cf-access-jwt-assertion");
@@ -70,9 +85,9 @@ export async function requireAccess(
       issuer: teamDomain,
     });
     if (payload.type !== "app") throw new Error("Not an application token");
-    if (typeof payload.email === "string") return "user";
+    if (typeof payload.email === "string") return { kind: "user" };
     if (typeof payload.common_name === "string" && payload.common_name)
-      return "service";
+      return { kind: "service", clientId: payload.common_name };
     throw new Error("Authenticated claims are missing");
   } catch {
     throw new ApiError(
