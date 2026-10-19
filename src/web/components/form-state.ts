@@ -1,0 +1,63 @@
+import type { Application, ApplicationInput } from "@/web/api";
+
+const NUMERIC = [
+  "salaryMin",
+  "salaryMax",
+  "yearsRequired",
+  "fit",
+  "interest",
+] as const;
+
+type Numeric = (typeof NUMERIC)[number];
+
+export type FormState = Omit<ApplicationInput, Numeric> &
+  Record<Numeric, string>;
+
+export const EMPTY: FormState = {
+  company: "",
+  role: "",
+  jobUrl: null,
+  location: null,
+  workMode: null,
+  employmentType: null,
+  source: null,
+  sourceDetail: null,
+  applyMethod: null,
+  requirements: ["resume"],
+  resumeVersion: null,
+  salaryMin: "",
+  salaryMax: "",
+  yearsRequired: "",
+  fit: "",
+  interest: "",
+  status: "saved",
+  appliedOn: null,
+  heardBackOn: null,
+  followUpOn: null,
+  contactName: null,
+  contactEmail: null,
+  description: null,
+  notes: null,
+};
+
+export function toForm(row: Application): FormState {
+  const state = { ...EMPTY } as Record<string, unknown>;
+  for (const key of Object.keys(EMPTY))
+    state[key] = row[key as keyof Application];
+  for (const key of NUMERIC) state[key] = row[key]?.toString() ?? "";
+  return state as FormState;
+}
+
+export function toInput(state: FormState): ApplicationInput {
+  const numbers = Object.fromEntries(
+    NUMERIC.map((key) => {
+      const text = state[key].replace(/[$,\s]/g, "");
+      if (!text) return [key, null];
+      const value = /k$/i.test(text)
+        ? Number(text.slice(0, -1)) * 1000
+        : Number(text);
+      return [key, Number.isFinite(value) ? Math.round(value) : null];
+    }),
+  ) as Pick<ApplicationInput, Numeric>;
+  return { ...state, ...numbers };
+}
