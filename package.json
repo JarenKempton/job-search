@@ -6,6 +6,9 @@
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "build": "vite build",
+    "build:makayla": "JOB_SEARCH_INSTANCE=makayla vite build",
+    "deploy:makayla": "pnpm build:makayla && wrangler d1 migrations apply DB --remote --config wrangler.makayla.jsonc && wrangler deploy --strict",
+    "deploy:check:makayla": "pnpm build:makayla && wrangler deploy --dry-run --outdir .wrangler/deploy-check-makayla",
     "check": "tsc --noEmit",
     "deploy": "vite build && wrangler d1 migrations apply DB --remote && wrangler deploy --strict",
     "deploy:check": "vite build && wrangler deploy --dry-run --outdir .wrangler/deploy-check",

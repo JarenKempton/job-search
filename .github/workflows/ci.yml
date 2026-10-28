@@ -32,3 +32,4 @@ jobs:
       - name: Verify generated migrations are committed
         run: pnpm migrate:generate && git diff --exit-code -- drizzle
       - run: pnpm deploy:check
+      - run: pnpm deploy:check:makayla
