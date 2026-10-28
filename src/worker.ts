@@ -1,9 +1,12 @@
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { Hono } from "hono";
 import { applicationRoutes } from "./applications/routes";
+import { utcToday } from "./applications/status";
 import type { AppEnv, Env } from "./env";
 import { mayAccess, requireAccess } from "./lib/cloudflare-access";
 import { ApiError, errorResponse } from "./lib/http";
 import { normalizeError } from "./lib/normalize-error";
+import { jobSearchServer, unwrap } from "./mcp/tools";
 
 const SECURITY_HEADERS = {
   "content-security-policy":
@@ -18,6 +21,25 @@ const SECURITY_HEADERS = {
 
 const app = new Hono<AppEnv>();
 app.route("/", applicationRoutes);
+app.all("/mcp", async (context) => {
+  const call = async (path: string, method = "GET", body?: unknown) =>
+    unwrap(
+      await app.request(
+        path,
+        {
+          method,
+          headers: body ? { "content-type": "application/json" } : {},
+          body: body ? JSON.stringify(body) : undefined,
+        },
+        context.env,
+      ),
+    );
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    enableJsonResponse: true,
+  });
+  await jobSearchServer(call, utcToday).connect(transport);
+  return transport.handleRequest(context.req.raw);
+});
 app.all("/api/*", () => {
   throw new ApiError(404, "not_found", "Route not found.");
 });
