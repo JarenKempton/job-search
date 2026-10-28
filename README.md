@@ -59,3 +59,9 @@ The hostname needs its own Cloudflare Access self-hosted application covering th
 - Deploy/migrate only her instance: `pnpm deploy:makayla`
 
 The Vite build selects her config when `JOB_SEARCH_INSTANCE=makayla`; the default remains Jaren’s instance. Wrangler deploy uses the config emitted by that build.
+
+## Benefits
+
+Each application has an optional **Benefits** section for vacation/PTO and rollover, sick leave, holidays, medical/dental/vision coverage and costs, retirement match and vesting, parental leave, other perks, notes, and the information source. Use text to preserve policy details; leave unknown benefits blank. These fields are included in CSV exports and available through both MCP transports with `add_application`, `update_application`, and `get_application`. Omitted fields stay unchanged on update; send `null` to clear a benefits field.
+
+Example: “Update Acme: 20 vacation days, healthcare starts day one, 4% retirement match; source: recruiter email today.”

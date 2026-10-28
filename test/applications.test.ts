@@ -94,6 +94,52 @@ describe("applications", () => {
     ).toBe(404);
   });
 
+  it("preserves, updates, clears, and exports benefits without assuming unknown benefits", async () => {
+    const created = await create({
+      company: "Benefits Co",
+      role: "Analyst",
+      pto: "20 vacation days; 5 roll over",
+      healthcare: "Medical, dental, vision; $120/month; starts day one",
+      retirement: "4% match, vested immediately",
+      benefitsSource: "Recruiter email, 2026-10-28",
+    });
+    expect(created).toMatchObject({
+      pto: "20 vacation days; 5 roll over",
+      sickLeave: null,
+    });
+    const updated = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: {
+        pto: "Unlimited",
+        retirement: null,
+        otherBenefits: "=unconfirmed",
+      },
+    });
+    expect(updated.status).toBe(200);
+    const detail = await data(await call(`/api/v1/applications/${created.id}`));
+    expect(detail).toMatchObject({
+      pto: "Unlimited",
+      retirement: null,
+      healthcare: created.healthcare,
+      benefitsSource: created.benefitsSource,
+    });
+    const csv = await (await call("/api/v1/applications.csv")).text();
+    expect(csv.split("\r\n")[0]).toContain(
+      "pto,sickLeave,holidays,healthcare,retirement,parentalLeave,otherBenefits,benefitsNotes,benefitsSource",
+    );
+    expect(csv).toContain("Unlimited");
+    expect(csv).toContain("'\u003dunconfirmed");
+    expect(csv).toContain(
+      '"Medical, dental, vision; $120/month; starts day one"',
+    );
+
+    const invalid = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { pto: "x".repeat(5001) },
+    });
+    expect(invalid.status).toBe(422);
+  });
+
   it("rejects an inverted salary range with a readable message", async () => {
     const response = await call("/api/v1/applications", {
       method: "POST",

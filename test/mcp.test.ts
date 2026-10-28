@@ -40,8 +40,21 @@ describe("remote MCP", () => {
       company: "Supabase",
       role: "Software Engineer - Branching",
       status: "applied",
+      pto: "20 vacation days",
+      healthcare: "Starts day one",
     });
     expect(added.status).toBe("applied");
+    await toolCall("update_application", {
+      id: added.id,
+      retirement: "4% employer match",
+      pto: null,
+    });
+    const detail = await toolCall("get_application", { id: added.id });
+    expect(detail).toMatchObject({
+      pto: null,
+      healthcare: "Starts day one",
+      retirement: "4% employer match",
+    });
     const rows = await toolCall("list_applications", { search: "supa" });
     expect(rows.map((row: { id: string }) => row.id)).toEqual([added.id]);
   });

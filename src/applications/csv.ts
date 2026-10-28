@@ -24,6 +24,15 @@ const COLUMNS: Array<keyof Application> = [
   "contactEmail",
   "jobUrl",
   "notes",
+  "pto",
+  "sickLeave",
+  "holidays",
+  "healthcare",
+  "retirement",
+  "parentalLeave",
+  "otherBenefits",
+  "benefitsNotes",
+  "benefitsSource",
 ];
 
 function cell(value: unknown): string {
