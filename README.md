@@ -34,6 +34,13 @@ The Worker refuses every request without a verified Access JWT for that audience
 claude mcp add job-search -s user -- node /home/jaren/.t3/projects/job-search/mcp/server.ts
 ```
 
+## ChatGPT (remote MCP)
+
+The Worker serves the same tools over Streamable HTTP at `https://job-search.jarenkempton.dev/mcp`, defined once in `src/mcp/tools.ts`. Sign-in is Cloudflare Access Managed OAuth, so the same Allow policy as the dashboard applies and the Worker sees an ordinary Access JWT.
+
+1. Zero Trust → Access controls → Applications → the `job-search.jarenkempton.dev` app → Edit → Advanced settings → turn on **Managed OAuth**, enable dynamic client registration, and allow the redirect URI `https://chatgpt.com/*`.
+2. ChatGPT web → Plugins → **+** → Add custom MCP server → URL `https://job-search.jarenkempton.dev/mcp`, authentication **OAuth** → sign in with Access.
+
 ## Checks
 
 ```sh
