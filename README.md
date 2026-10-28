@@ -46,3 +46,16 @@ The Worker serves the same tools over Streamable HTTP at `https://job-search.jar
 ```sh
 pnpm format:check && pnpm check && pnpm test && pnpm deploy:check
 ```
+
+## Makayla’s instance
+
+`makayla-jobs.jarenkempton.dev` runs the same code in a separate Worker (`makayla-jobs`) with its own D1 database. `wrangler.makayla.jsonc` holds its bindings and Access audience. Neither instance shares application records or service-token access. Both instances deploy after green CI on `main`.
+
+The hostname needs its own Cloudflare Access self-hosted application covering the entire hostname. Allow only Makayla’s email and Jaren’s email. Enable Managed OAuth and allow redirect URI `https://chatgpt.com/*`. Copy this application’s AUD into `ACCESS_AUD` in `wrangler.makayla.jsonc` before deployment. Do not reuse the original application’s AUD or expand its policy.
+
+- Dashboard: `https://makayla-jobs.jarenkempton.dev`
+- Remote MCP: `https://makayla-jobs.jarenkempton.dev/mcp` (OAuth)
+- Build/dry-run: `pnpm deploy:check:makayla`
+- Deploy/migrate only her instance: `pnpm deploy:makayla`
+
+The Vite build selects her config when `JOB_SEARCH_INSTANCE=makayla`; the default remains Jaren’s instance. Wrangler deploy uses the config emitted by that build.
