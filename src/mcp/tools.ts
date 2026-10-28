@@ -66,7 +66,7 @@ const fields = {
     .min(0)
     .max(100)
     .optional()
-    .describe("How well Jaren matches the posting, 0-100"),
+    .describe("How well the applicant matches the posting, 0-100"),
   interest: z.number().int().min(1).max(5).optional(),
   status: z
     .enum(STATUSES)
@@ -81,6 +81,87 @@ const fields = {
   contactEmail: z.string().email().optional(),
   description: z.string().optional().describe("Full job description text"),
   notes: z.string().optional(),
+  pto: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Vacation allowance or unlimited PTO, accrual, and rollover rules. Omit when unknown; null clears the field.",
+    ),
+  sickLeave: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Paid sick days and any separate sick-leave policy. Omit when unknown; null clears the field.",
+    ),
+  holidays: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Paid holidays, floating holidays, and shutdowns. Omit when unknown; null clears the field.",
+    ),
+  healthcare: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Medical, dental, and vision; employee premiums, deductible, and when coverage starts. Omit when unknown; null clears the field.",
+    ),
+  retirement: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "401(k) or pension, employer match, and vesting schedule. Omit when unknown; null clears the field.",
+    ),
+  parentalLeave: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Paid or unpaid leave and eligibility. Omit when unknown; null clears the field.",
+    ),
+  otherBenefits: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Disability coverage, education budget, equipment, stipends, and other perks. Omit when unknown; null clears the field.",
+    ),
+  benefitsNotes: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Questions, caveats, and details still to confirm. Omit when unknown; null clears the field.",
+    ),
+  benefitsSource: z
+    .string()
+    .trim()
+    .max(5_000)
+    .nullable()
+    .optional()
+    .describe(
+      "Posting URL, benefits document, or recruiter and date. Omit when unknown; null clears the field.",
+    ),
 };
 
 export function jobSearchServer(call: ApiCall, today: () => string) {
@@ -155,7 +236,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "add_application",
     {
       description:
-        "Track a new job. Before calling, check list_applications for a duplicate. When given a posting URL, read the posting first and fill in as many fields as it supports. Status defaults to saved; use applied if Jaren already applied.",
+        "Track a new job. Before calling, check list_applications for a duplicate. When given a posting URL, read the posting first and fill in as many fields as it supports. Status defaults to saved; use applied if the applicant already applied. Include benefits supported by the posting; leave unknown benefits unset.",
       inputSchema: fields,
     },
     async (input) =>
@@ -171,7 +252,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "update_application",
     {
       description:
-        "Change fields on an existing application. Send only the fields that change.",
+        "Change fields on an existing application. Send only the fields that change. Benefits fields accept null to clear them.",
       inputSchema: {
         id: z.string().uuid(),
         ...Object.fromEntries(

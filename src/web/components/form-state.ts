@@ -38,6 +38,15 @@ export const EMPTY: FormState = {
   contactEmail: null,
   description: null,
   notes: null,
+  pto: null,
+  sickLeave: null,
+  holidays: null,
+  healthcare: null,
+  retirement: null,
+  parentalLeave: null,
+  otherBenefits: null,
+  benefitsNotes: null,
+  benefitsSource: null,
 };
 
 export function toForm(row: Application): FormState {

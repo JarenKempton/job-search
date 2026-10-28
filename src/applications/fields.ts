@@ -129,3 +129,52 @@ export const LABELS: Record<string, string> = {
   interview: "Interview",
   follow_up: "Follow-up sent",
 };
+
+// Free text preserves policy details; blank means unknown, not no benefit.
+export const BENEFIT_FIELDS = [
+  {
+    key: "pto",
+    title: "Paid time off",
+    hint: "Vacation allowance or unlimited PTO, accrual, and rollover rules",
+  },
+  {
+    key: "sickLeave",
+    title: "Sick leave",
+    hint: "Paid sick days and any separate sick-leave policy",
+  },
+  {
+    key: "holidays",
+    title: "Holidays",
+    hint: "Paid holidays, floating holidays, and shutdowns",
+  },
+  {
+    key: "healthcare",
+    title: "Healthcare",
+    hint: "Medical, dental, and vision; employee premiums, deductible, and when coverage starts",
+  },
+  {
+    key: "retirement",
+    title: "Retirement",
+    hint: "401(k) or pension, employer match, and vesting schedule",
+  },
+  {
+    key: "parentalLeave",
+    title: "Parental leave",
+    hint: "Paid or unpaid leave and eligibility",
+  },
+  {
+    key: "otherBenefits",
+    title: "Other benefits",
+    hint: "Disability coverage, education budget, equipment, stipends, and other perks",
+  },
+  {
+    key: "benefitsNotes",
+    title: "Benefits notes",
+    hint: "Questions, caveats, and details still to confirm",
+  },
+  {
+    key: "benefitsSource",
+    title: "Benefits source",
+    hint: "Posting URL, benefits document, or recruiter and date",
+  },
+] as const;

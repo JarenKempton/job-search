@@ -48,6 +48,15 @@ export const applicationFields = {
   contactEmail: optional(z.email().max(320)),
   description: text(50_000),
   notes: text(20_000),
+  pto: text(5_000),
+  sickLeave: text(5_000),
+  holidays: text(5_000),
+  healthcare: text(5_000),
+  retirement: text(5_000),
+  parentalLeave: text(5_000),
+  otherBenefits: text(5_000),
+  benefitsNotes: text(5_000),
+  benefitsSource: text(5_000),
 };
 
 const salaryOrdered = (input: {

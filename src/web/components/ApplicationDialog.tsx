@@ -2,6 +2,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   APPLY_METHODS,
+  BENEFIT_FIELDS,
   EMPLOYMENT_TYPES,
   REQUIREMENTS,
   SOURCES,
@@ -246,6 +247,19 @@ export function ApplicationDialog({
                 <Input type="number" min={1} max={5} {...text("interest")} />
               </Field>
             </div>
+          </fieldset>
+
+          <fieldset className="wide">
+            <legend>Benefits (optional)</legend>
+            <p className="span-2 text-sm text-muted-foreground">
+              Leave unknown benefits blank. Add policy details and a source as
+              you learn more.
+            </p>
+            {BENEFIT_FIELDS.map(({ key, title, hint }) => (
+              <Field key={key} id={key} title={title} hint={hint}>
+                <Textarea rows={2} maxLength={5000} {...text(key)} />
+              </Field>
+            ))}
           </fieldset>
 
           <fieldset>
