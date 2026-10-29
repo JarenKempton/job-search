@@ -17,12 +17,20 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/mcp"],
   },
+  "durable_objects": {
+    "bindings": [{ "name": "TRACKER", "class_name": "Tracker" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Tracker"] }],
   "d1_databases": [
     {
-      "binding": "DB",
+      "binding": "JAREN_D1",
       "database_name": "job-search",
       "database_id": "2e7178b9-1f85-4d17-a47a-17e8374d5ecd",
-      "migrations_dir": "drizzle",
+    },
+    {
+      "binding": "MAKAYLA_D1",
+      "database_name": "makayla-jobs",
+      "database_id": "c958083c-ed4d-4fb8-bacd-0994d7345ced",
     },
   ],
   "observability": {
@@ -41,6 +49,5 @@
   "vars": {
     "ACCESS_AUD": "ddc62324f80b4fde42600f5819fb6c463357a1267e6ee81a50e116d9d00070e4",
     "ACCESS_TEAM_DOMAIN": "https://jarenkempton.cloudflareaccess.com",
-    "ACCESS_SERVICE_CLIENT_ID": "bb2fd392a5c7240d1214679a2f96ca9c.access",
   },
 }

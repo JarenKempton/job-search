@@ -1,9 +1,16 @@
+import type { Tracker } from "./tracker";
+
 export interface Env {
-  DB: D1Database;
+  TRACKER: DurableObjectNamespace<Tracker>;
   ASSETS: Fetcher;
+  JAREN_D1?: D1Database;
+  MAKAYLA_D1?: D1Database;
+  LEGACY_OWNERS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
-  ACCESS_SERVICE_CLIENT_ID?: string;
 }
 
-export type AppEnv = { Bindings: Env };
+export type AppEnv = {
+  Bindings: Env;
+  Variables: { tracker: DurableObjectStub<Tracker> };
+};

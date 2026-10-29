@@ -1,19 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { call } from "./helpers";
-
-async function rpc(method: string, params: Record<string, unknown> = {}) {
-  const response = await call("/mcp", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-    },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  expect(response.status).toBe(200);
-  return ((await response.json()) as { result: Record<string, unknown> })
-    .result;
-}
+import { rpc } from "./helpers";
 
 function toolCall(name: string, args: Record<string, unknown>) {
   return rpc("tools/call", { name, arguments: args }).then((result) =>
