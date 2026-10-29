@@ -1,5 +1,10 @@
 import { useState } from "react";
-import type { Application, ApplicationInput } from "@/web/api";
+import type {
+  Application,
+  ApplicationInput,
+  ApplicationUpdate,
+} from "@/web/api";
+import { benefitsPatchSchema } from "@/applications/benefits";
 
 const NUMERIC = [
   "salaryMin",
@@ -75,6 +80,43 @@ export function toInput(state: FormState): ApplicationInput {
     }),
   ) as Pick<ApplicationInput, Numeric>;
   return { ...state, ...numbers };
+}
+
+function changedValue(value: unknown, baseline: unknown): unknown {
+  if (JSON.stringify(value) === JSON.stringify(baseline)) return undefined;
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return value;
+  const previous =
+    baseline !== null &&
+    typeof baseline === "object" &&
+    !Array.isArray(baseline)
+      ? (baseline as Record<string, unknown>)
+      : {};
+  const changes: Record<string, unknown> = {};
+  for (const [key, next] of Object.entries(value)) {
+    const change = changedValue(next, previous[key]);
+    if (change !== undefined) changes[key] = change;
+  }
+  return Object.keys(changes).length ? changes : undefined;
+}
+
+export function toPatch(
+  state: FormState,
+  baseline: Application,
+): ApplicationUpdate {
+  const { benefits, ...current } = toInput(state);
+  const { benefits: previousBenefits, ...previous } = toInput(toForm(baseline));
+  const changes: ApplicationUpdate = Object.fromEntries(
+    Object.entries(current).filter(
+      ([key, value]) =>
+        JSON.stringify(value) !==
+        JSON.stringify(previous[key as keyof typeof previous]),
+    ),
+  );
+  const benefitChanges = changedValue(benefits, previousBenefits);
+  if (benefitChanges !== undefined)
+    changes.benefits = benefitsPatchSchema.nullable().parse(benefitChanges);
+  return changes;
 }
 
 export function useFormState(initial: FormState = EMPTY) {

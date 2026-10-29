@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { jobs, type ApplicationDetail } from "@/web/api";
 import { ApplicationSummary } from "@/web/components/ApplicationSummary";
 import { EditSections } from "@/web/components/EditSections";
-import { toForm, toInput, useFormState } from "@/web/components/form-state";
+import { toForm, toPatch, useFormState } from "@/web/components/form-state";
 import { Timeline } from "@/web/components/Timeline";
 import { Button } from "@/web/components/ui/button";
 import {
@@ -72,8 +72,10 @@ export function ApplicationSheet({
 
   const save = (event: FormEvent) => {
     event.preventDefault();
+    if (!detail) return;
     return run(async () => {
-      await jobs.update(id, toInput(form));
+      const patch = toPatch(form, detail);
+      if (Object.keys(patch).length) await jobs.update(id, patch);
       setForm(toForm(await reload()));
       setEditing(false);
     });
