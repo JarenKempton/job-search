@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Application, ApplicationInput } from "@/web/api";
 
 const NUMERIC = [
@@ -70,3 +71,18 @@ export function toInput(state: FormState): ApplicationInput {
   ) as Pick<ApplicationInput, Numeric>;
   return { ...state, ...numbers };
 }
+
+export function useFormState(initial: FormState = EMPTY) {
+  const [form, setForm] = useState<FormState>(initial);
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  const text = (key: keyof FormState) => ({
+    id: key,
+    value: (form[key] as string | null) ?? "",
+    onChange: (event: { target: { value: string } }) =>
+      set(key, event.target.value as never),
+  });
+  return { form, setForm, set, text };
+}
+
+export type FormApi = ReturnType<typeof useFormState>;

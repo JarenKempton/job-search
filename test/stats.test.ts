@@ -1,14 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { Application } from "../src/web/api";
+import {
+  daysWaiting,
+  hasBenefits,
+  nextAction,
+  stageOf,
+} from "../src/web/board";
 import { needsFollowUp, summarize } from "../src/web/stats";
 
 const base = {
+  company: "Acme",
   status: "applied",
   appliedOn: "2026-10-01",
   heardBackOn: null,
   followUpOn: null,
+  salaryMin: null,
+  salaryMax: null,
   source: "linkedin",
   fit: null,
+  createdAt: "2026-09-28T15:00:00.000Z",
+  pto: null,
+  healthcare: null,
 } as unknown as Application;
 
 const row = (patch: Partial<Application>) =>
@@ -26,26 +38,95 @@ describe("stats", () => {
     );
   });
 
-  it("computes response rate per source", () => {
+  it("computes response and rejection rates over applied jobs", () => {
     const stats = summarize(
       [
         row({ heardBackOn: "2026-10-05", status: "rejected" }),
         row({}),
-        row({
-          source: "referral",
-          status: "interviewing",
-          heardBackOn: "2026-10-03",
-        }),
+        row({ status: "interviewing", heardBackOn: "2026-10-03" }),
+        row({ status: "ghosted" }),
         row({ status: "saved", appliedOn: null }),
       ],
       "2026-10-10",
     );
-    expect(stats.applied).toBe(3);
-    expect(stats.responseRate).toBeCloseTo(2 / 3);
-    expect(stats.medianDaysToResponse).toBe(3);
-    expect(stats.sources).toMatchObject([
-      { source: "linkedin", applied: 2, responses: 1, rate: 0.5 },
-      { source: "referral", applied: 1, responses: 1, interviews: 1 },
-    ]);
+    expect(stats.total).toBe(5);
+    expect(stats.responseRate).toBe(0.5);
+    expect(stats.rejectionRate).toBe(0.25);
+    expect(stats.followUpsDue).toBe(0);
+  });
+
+  it("summarizes salaries of open jobs, using whichever bound is known", () => {
+    const stats = summarize(
+      [
+        row({ company: "Low", salaryMin: 90_000, salaryMax: 110_000 }),
+        row({ company: "High", salaryMax: 200_000 }),
+        row({ company: "Mid", salaryMin: 150_000 }),
+        row({ company: "Gone", status: "rejected", salaryMin: 500_000 }),
+        row({ company: "Unknown" }),
+      ],
+      "2026-10-10",
+    );
+    expect(stats.salaryCount).toBe(3);
+    expect(stats.averageSalary).toBe(150_000);
+    expect(stats.highestSalary).toMatchObject({
+      value: 200_000,
+      row: { company: "High" },
+    });
+    expect(stats.lowestSalary).toMatchObject({
+      value: 90_000,
+      row: { company: "Low" },
+    });
+  });
+
+  it("has no salary figures when no open job lists pay", () => {
+    const stats = summarize([row({})], "2026-10-10");
+    expect(stats.averageSalary).toBeNull();
+    expect(stats.highestSalary).toBeNull();
+    expect(stats.lowestSalary).toBeNull();
+  });
+});
+
+describe("board", () => {
+  it("groups statuses into board columns", () => {
+    expect(stageOf("screening").title).toBe("Heard back");
+    expect(stageOf("accepted").key).toBe("offer");
+    expect(stageOf("ghosted").key).toBe("closed");
+  });
+
+  it("counts days waiting since the last reply, application or save", () => {
+    expect(daysWaiting(row({}), "2026-10-11")).toBe(10);
+    expect(daysWaiting(row({ heardBackOn: "2026-10-08" }), "2026-10-11")).toBe(
+      3,
+    );
+    expect(
+      daysWaiting(row({ status: "saved", appliedOn: null }), "2026-10-01"),
+    ).toBe(3);
+    expect(daysWaiting(row({ status: "rejected" }), "2026-10-11")).toBeNull();
+  });
+
+  it("reports benefits as filled in only when some text is present", () => {
+    expect(hasBenefits(row({}))).toBe(false);
+    expect(hasBenefits(row({ pto: "  " }))).toBe(false);
+    expect(hasBenefits(row({ healthcare: "Day one" }))).toBe(true);
+  });
+
+  it("suggests the next action", () => {
+    expect(nextAction(row({}), "2026-10-05")).toEqual({
+      text: "Follow up",
+      on: "2026-10-15",
+      due: false,
+    });
+    expect(nextAction(row({}), "2026-10-20")).toEqual({
+      text: "Follow up",
+      on: null,
+      due: true,
+    });
+    expect(
+      nextAction(row({ followUpOn: "2026-10-04" }), "2026-10-05"),
+    ).toMatchObject({ on: "2026-10-04", due: true });
+    expect(nextAction(row({ status: "saved" }), "2026-10-05")?.text).toBe(
+      "Apply",
+    );
+    expect(nextAction(row({ status: "withdrawn" }), "2026-10-05")).toBeNull();
   });
 });

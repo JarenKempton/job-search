@@ -39,7 +39,7 @@ export function Timeline({
 
   return (
     <section className="timeline">
-      <h3>Timeline</h3>
+      <h3 className="section-label">Timeline</h3>
       <div className="timeline-add">
         <Choice
           id="event-kind"

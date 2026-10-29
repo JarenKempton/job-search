@@ -1,23 +1,27 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-export type Route = "dashboard" | "applications";
+const read = () =>
+  decodeURIComponent(window.location.hash.replace(/^#\/?/, "")) || null;
 
-function read(): Route {
-  return window.location.hash.replace(/^#\/?/, "") === "applications"
-    ? "applications"
-    : "dashboard";
-}
+export function useOpenApplication() {
+  const [id, setId] = useState(read);
 
-export function navigate(route: Route): void {
-  window.location.hash = route === "dashboard" ? "" : `/${route}`;
-}
-
-export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(read);
   useEffect(() => {
-    const onChange = () => setRoute(read());
-    window.addEventListener("hashchange", onChange);
-    return () => window.removeEventListener("hashchange", onChange);
+    const sync = () => setId(read());
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
   }, []);
-  return route;
+
+  const open = useCallback((next: string) => {
+    window.history.pushState({ sheet: true }, "", `#/${next}`);
+    setId(next);
+  }, []);
+
+  const close = useCallback(() => {
+    if (window.history.state?.sheet) return window.history.back();
+    window.history.replaceState(null, "", window.location.pathname);
+    setId(null);
+  }, []);
+
+  return { id, open, close };
 }
