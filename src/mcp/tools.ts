@@ -164,6 +164,8 @@ const fields = {
     ),
 };
 
+const ALWAYS_SET = new Set(["company", "role", "status", "requirements"]);
+
 export function jobSearchServer(call: ApiCall, today: () => string) {
   const server = new McpServer({ name: "job-search", version: "0.1.0" });
 
@@ -252,13 +254,15 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "update_application",
     {
       description:
-        "Change fields on an existing application. Send only the fields that change. Benefits fields accept null to clear them.",
+        "Change fields on an existing application. Send only the fields that change. Send null to clear a field you cannot verify, such as an applied date with no confirmation email.",
       inputSchema: {
         id: z.string().uuid(),
         ...Object.fromEntries(
           Object.entries(fields).map(([key, schema]) => [
             key,
-            schema.optional(),
+            ALWAYS_SET.has(key)
+              ? schema.optional()
+              : schema.nullable().optional(),
           ]),
         ),
       },
@@ -297,6 +301,17 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
           note: note ?? null,
         }),
       ),
+  );
+
+  server.registerTool(
+    "delete_application",
+    {
+      description:
+        "Permanently delete an application and its timeline, e.g. a duplicate row. Before deleting a duplicate, move anything worth keeping onto the surviving application with update_application and log_event.",
+      annotations: { destructiveHint: true },
+      inputSchema: { id: z.string().uuid() },
+    },
+    async ({ id }) => reply(await call(`/api/v1/applications/${id}`, "DELETE")),
   );
 
   return server;

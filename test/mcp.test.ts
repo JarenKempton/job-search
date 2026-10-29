@@ -32,7 +32,35 @@ describe("remote MCP", () => {
       "add_application",
       "update_application",
       "log_event",
+      "delete_application",
     ]);
+  });
+
+  it("clears an unverified date with null", async () => {
+    const added = await toolCall("add_application", {
+      company: "Railway",
+      role: "Software Engineer",
+      status: "applied",
+      appliedOn: "2026-10-01",
+    });
+    await toolCall("update_application", { id: added.id, appliedOn: null });
+    const detail = await toolCall("get_application", { id: added.id });
+    expect(detail.appliedOn).toBeNull();
+    expect(detail.status).toBe("applied");
+  });
+
+  it("deletes a duplicate application", async () => {
+    const keep = await toolCall("add_application", {
+      company: "North",
+      role: "Engineer",
+    });
+    const duplicate = await toolCall("add_application", {
+      company: "North",
+      role: "Engineer",
+    });
+    await toolCall("delete_application", { id: duplicate.id });
+    const rows = await toolCall("list_applications", { search: "north" });
+    expect(rows.map((row: { id: string }) => row.id)).toEqual([keep.id]);
   });
 
   it("adds an application that list_applications then finds", async () => {
