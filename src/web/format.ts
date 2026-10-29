@@ -10,6 +10,9 @@ const compact = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
+export const money = (value: number | null) =>
+  value == null ? "—" : compact.format(value);
+
 export function salaryRange(min: number | null, max: number | null): string {
   if (min == null && max == null) return "—";
   if (min == null) return `≤ ${compact.format(max!)}`;
