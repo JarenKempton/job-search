@@ -7,7 +7,10 @@ export default defineConfig({
     cloudflareTest(async () => ({
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
-        bindings: { TEST_MIGRATIONS: await readD1Migrations("./drizzle") },
+        bindings: {
+          TEST_MIGRATIONS: await readD1Migrations("./drizzle"),
+          LEGACY_OWNERS: JSON.stringify({ "Mover@Example.Test": "JAREN_D1" }),
+        },
       },
     })),
   ],

@@ -1,8 +1,8 @@
-import { drizzle } from "drizzle-orm/d1";
+import { drizzle } from "drizzle-orm/durable-sqlite";
 import * as schema from "./schema";
 
-export function database(binding: D1Database) {
-  return drizzle(binding, { schema, logger: false });
+export function database(storage: DurableObjectStorage) {
+  return drizzle(storage, { schema, logger: false });
 }
 
 export type Database = ReturnType<typeof database>;

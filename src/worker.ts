@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { applicationRoutes } from "./applications/routes";
 import { utcToday } from "./applications/status";
 import type { AppEnv, Env } from "./env";
-import { mayAccess, requireAccess } from "./lib/cloudflare-access";
+import { requireAccess } from "./lib/cloudflare-access";
 import { ApiError, errorResponse } from "./lib/http";
 import { normalizeError } from "./lib/normalize-error";
 import { jobSearchServer, unwrap } from "./mcp/tools";
@@ -19,19 +19,38 @@ const SECURITY_HEADERS = {
   "x-robots-tag": "noindex, nofollow",
 };
 
+export { Tracker } from "./tracker";
+
 const app = new Hono<AppEnv>();
+app.use(async (context, next) => {
+  const email = await requireAccess(
+    context.req.raw,
+    context.env,
+    context.executionCtx as ExecutionContext,
+  );
+  context.set(
+    "tracker",
+    context.env.TRACKER.get(context.env.TRACKER.idFromName(email)),
+  );
+  await next();
+});
 app.route("/", applicationRoutes);
 app.all("/mcp", async (context) => {
+  const assertion = context.req.header("cf-access-jwt-assertion");
   const call = async (path: string, method = "GET", body?: unknown) =>
     unwrap(
       await app.request(
         path,
         {
           method,
-          headers: body ? { "content-type": "application/json" } : {},
+          headers: {
+            ...(assertion ? { "cf-access-jwt-assertion": assertion } : {}),
+            ...(body ? { "content-type": "application/json" } : {}),
+          },
           body: body ? JSON.stringify(body) : undefined,
         },
         context.env,
+        context.executionCtx,
       ),
     );
   const transport = new WebStandardStreamableHTTPServerTransport({
@@ -48,19 +67,8 @@ app.onError((error) => errorResponse(normalizeError(error)));
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
-    let response: Response;
-    try {
-      const principal = await requireAccess(request, env, ctx);
-      if (!mayAccess(principal, env, new URL(request.url).pathname))
-        throw new ApiError(
-          403,
-          "forbidden",
-          "This client may not access that.",
-        );
-      response = await app.fetch(request, env);
-    } catch (error) {
-      response = errorResponse(error);
-    }
+    const response = await app.fetch(request, env, ctx);
+    if (response.webSocket) return response;
     const result = new Response(response.body, response);
     for (const [name, value] of Object.entries(SECURITY_HEADERS))
       result.headers.set(name, value);

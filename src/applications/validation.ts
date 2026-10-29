@@ -90,3 +90,4 @@ export const createEventSchema = z.object({
 
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
+export type CreateEventInput = z.infer<typeof createEventSchema>;

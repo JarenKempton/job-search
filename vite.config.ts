@@ -5,16 +5,7 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    cloudflare({
-      configPath:
-        process.env.JOB_SEARCH_INSTANCE === "makayla"
-          ? "wrangler.makayla.jsonc"
-          : "wrangler.jsonc",
-    }),
-  ],
+  plugins: [react(), tailwindcss(), cloudflare()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
