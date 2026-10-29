@@ -45,7 +45,10 @@ export function daysWaiting(row: Application, today: string): number | null {
 }
 
 export const hasBenefits = (row: Application) =>
-  BENEFIT_FIELDS.some(({ key }) => row[key]?.trim());
+  BENEFIT_FIELDS.some(({ key }) => row[key]?.trim()) ||
+  Object.values(row.benefits ?? {}).some(
+    (group) => group != null && group.availability !== "unknown",
+  );
 
 export type NextAction = { text: string; on: string | null; due: boolean };
 
@@ -53,7 +56,12 @@ export function nextAction(row: Application, today: string): NextAction | null {
   if (CLOSED_STATUSES.includes(row.status)) return null;
   const due = needsFollowUp(row, today);
   if (row.followUpOn) return { text: "Follow up", on: row.followUpOn, due };
-  if (due) return { text: "Follow up", on: null, due: true };
+  if (due)
+    return {
+      text: "Follow up",
+      on: row.appliedOn ? addDays(row.appliedOn, STALE_AFTER_DAYS) : null,
+      due: true,
+    };
   switch (row.status) {
     case "saved":
       return { text: "Apply", on: null, due: false };

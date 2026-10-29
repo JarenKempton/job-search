@@ -33,11 +33,16 @@ const COLUMNS: Array<keyof Application> = [
   "otherBenefits",
   "benefitsNotes",
   "benefitsSource",
+  "benefits",
 ];
 
 function cell(value: unknown): string {
   if (value == null) return "";
-  const text = Array.isArray(value) ? value.join("; ") : String(value);
+  const text = Array.isArray(value)
+    ? value.join("; ")
+    : typeof value === "object"
+      ? JSON.stringify(value)
+      : String(value);
   const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }

@@ -1,6 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
+  benefitsPatchSchema,
+  benefitsSchema,
+} from "../applications/benefits.ts";
+import {
   APPLY_METHODS,
   EMPLOYMENT_TYPES,
   EVENT_KINDS,
@@ -153,6 +157,12 @@ const fields = {
     .describe(
       "Questions, caveats, and details still to confirm. Omit when unknown; null clears the field.",
     ),
+  benefits: benefitsSchema
+    .nullable()
+    .optional()
+    .describe(
+      "Verified structured benefits. Money is integer cents plus currency; unknown facts are omitted or null, never assumed zero. Keep legacy policy text as source notes.",
+    ),
   benefitsSource: z
     .string()
     .trim()
@@ -265,6 +275,12 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
               : schema.nullable().optional(),
           ]),
         ),
+        benefits: benefitsPatchSchema
+          .nullable()
+          .optional()
+          .describe(
+            "Nested patch: omitted groups and facts are preserved; null clears a fact, group, or all benefits. Money objects merge by field; arrays replace in full. Setting not_offered clears prior policy facts and rejects contradictory supplied facts. Unlimited PTO and sick leave included in PTO clear the prior separate annual allowance.",
+          ),
       },
     },
     async ({ id, ...input }) =>

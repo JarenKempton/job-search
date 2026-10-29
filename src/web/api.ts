@@ -1,4 +1,5 @@
 import type { EventKind } from "@/applications/fields";
+import type { BenefitsPatch } from "@/applications/benefits";
 import type {
   Application as Row,
   ApplicationEvent as EventRow,
@@ -13,6 +14,9 @@ export type ApplicationInput = Omit<
   Application,
   "id" | "createdAt" | "updatedAt"
 >;
+export type ApplicationUpdate = Partial<Omit<ApplicationInput, "benefits">> & {
+  benefits?: BenefitsPatch | null;
+};
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -49,7 +53,7 @@ export const jobs = {
       "/api/v1/applications",
       send("POST", { ...input, today: localToday() }),
     ),
-  update: (id: string, input: Partial<ApplicationInput>) =>
+  update: (id: string, input: ApplicationUpdate) =>
     api<Application>(
       `/api/v1/applications/${id}`,
       send("PATCH", { ...input, today: localToday() }),

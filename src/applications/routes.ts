@@ -42,9 +42,11 @@ export const applicationRoutes = new Hono<AppEnv>()
     const { today = utcToday(), ...input } = updateApplicationSchema.parse(
       await readJson(context.req.raw),
     );
-    return ok(
-      (await context.var.tracker.update(id, input, today)) ?? notFound(),
-    );
+    const updated =
+      (await context.var.tracker.update(id, input, today)) ?? notFound();
+    if ("benefitsError" in updated)
+      throw new ApiError(422, "validation_error", updated.benefitsError);
+    return ok(updated);
   })
   .delete("/api/v1/applications/:id", async (context) => {
     const id = requireUuid(context.req.param("id"), "Application");

@@ -1,5 +1,6 @@
 import type { Summary } from "@/web/stats";
 import { money, percent } from "@/web/format";
+import { Card, CardContent } from "@/web/components/ui/card";
 
 export function StatsStrip({ stats }: { stats: Summary }) {
   const tiles = [
@@ -32,19 +33,20 @@ export function StatsStrip({ stats }: { stats: Summary }) {
       title: "Follow-ups",
       value: stats.followUpsDue.toString(),
       note: stats.followUpsDue ? "due now" : "all caught up",
-      due: stats.followUpsDue > 0,
     },
   ];
 
   return (
-    <section className="stats" aria-label="At a glance">
-      {tiles.map((tile) => (
-        <div key={tile.title} className={tile.due ? "stat is-due" : "stat"}>
-          <span>{tile.title}</span>
-          <strong className="tabular">{tile.value}</strong>
-          <small>{tile.note}</small>
-        </div>
-      ))}
-    </section>
+    <Card className="gap-0 py-0" aria-label="At a glance">
+      <CardContent className="stats p-0">
+        {tiles.map((tile) => (
+          <div key={tile.title} className="stat">
+            <span>{tile.title}</span>
+            <strong className="tabular">{tile.value}</strong>
+            <small>{tile.note}</small>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
