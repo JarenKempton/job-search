@@ -22,10 +22,11 @@ export function ApplicationSheet({
   onChanged: () => Promise<void>;
 }) {
   const formApi = useFormState();
-  const { form, set, setForm } = formApi;
+  const { form, setForm } = formApi;
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     jobs
@@ -59,11 +60,22 @@ export function ApplicationSheet({
     }
   }
 
+  function cancelEditing() {
+    if (detail) setForm(toForm(detail));
+    setError(null);
+    setEditing(false);
+  }
+
+  function close() {
+    if (!dirty || window.confirm("Discard your unsaved changes?")) onClose();
+  }
+
   const save = (event: FormEvent) => {
     event.preventDefault();
     return run(async () => {
       await jobs.update(id, toInput(form));
       setForm(toForm(await reload()));
+      setEditing(false);
     });
   };
 
@@ -77,66 +89,87 @@ export function ApplicationSheet({
     });
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent className="sheet">
         <DialogTitle className="sr-only">
           {detail ? `${detail.company} — ${detail.role}` : "Application"}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          Summary, edit sections and timeline for this application.
+          {editing
+            ? "Edit this application's details, then save or cancel."
+            : "Application summary and recorded activity."}
         </DialogDescription>
         {!detail ? (
           <p className="muted">{error ?? "Loading…"}</p>
         ) : (
           <div className="sheet-body">
-            <ApplicationSummary
-              row={detail}
-              status={form.status}
-              onStatus={(status) => set("status", status)}
-            />
-            <Timeline
-              events={detail.events}
-              onAdd={async (input) => {
-                await jobs.addEvent(id, input);
-                await reload();
-              }}
-              onRemove={async (eventId) => {
-                await jobs.removeEvent(eventId);
-                await reload();
-              }}
-            />
-            <form id="sheet-form" onSubmit={save}>
-              <h3 className="section-label">Edit</h3>
-              <EditSections {...formApi} />
-            </form>
-            <Button
-              type="button"
-              variant="ghost"
-              className="delete-button"
-              onClick={() => void remove()}
-            >
-              Delete application
-            </Button>
-            {(dirty || error) && (
-              <div className="save-bar">
-                <span>{error ?? "Unsaved changes"}</span>
+            {editing ? (
+              <>
+                <header className="summary-head">
+                  <p className="summary-company">{detail.company}</p>
+                  <h2>Edit application</h2>
+                  <p className="muted">
+                    Changes are saved only when you choose Save changes.
+                  </p>
+                </header>
+                <form id="sheet-form" onSubmit={save}>
+                  <EditSections {...formApi} />
+                </form>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  onClick={() => setForm(toForm(detail))}
+                  className="delete-button"
+                  disabled={busy}
+                  onClick={() => void remove()}
                 >
-                  Discard
+                  Delete application
                 </Button>
-                <Button
-                  type="submit"
-                  form="sheet-form"
-                  size="sm"
-                  disabled={busy || !dirty}
-                >
-                  Save
-                </Button>
-              </div>
+                <div className="save-bar">
+                  <span role={error ? "alert" : undefined}>
+                    {error ?? (dirty ? "Unsaved changes" : "No changes yet")}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
+                    onClick={cancelEditing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="sheet-form"
+                    size="sm"
+                    disabled={busy || !dirty}
+                  >
+                    {busy ? "Saving…" : "Save changes"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <ApplicationSummary
+                  row={detail}
+                  onEdit={() => setEditing(true)}
+                />
+                <Timeline
+                  events={detail.events}
+                  applicationNote={detail.notes}
+                  onClearNote={async () => {
+                    await jobs.update(id, { notes: null });
+                    setForm(toForm(await reload()));
+                  }}
+                  onAdd={async (input) => {
+                    await jobs.addEvent(id, input);
+                    await reload();
+                  }}
+                  onRemove={async (eventId) => {
+                    await jobs.removeEvent(eventId);
+                    await reload();
+                  }}
+                />
+              </>
             )}
           </div>
         )}

@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { asc, count, desc, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 import migrations from "../drizzle/migrations.js";
+import { mergeBenefits } from "./applications/benefits";
 import type { Status } from "./applications/fields";
 import { datesForStatus, statusNote } from "./applications/status";
 import type {
@@ -121,6 +122,17 @@ export class Tracker extends DurableObject<Env> {
   update(id: string, input: ApplicationChanges, today: string) {
     const existing = this.application(id);
     if (!existing) return null;
+    const { benefits, ...changes } = input;
+    const merged =
+      benefits === undefined
+        ? { success: true as const, data: existing.benefits }
+        : mergeBenefits(existing.benefits, benefits);
+    if (!merged.success) {
+      const issue = merged.error.issues[0];
+      return {
+        benefitsError: `benefits.${issue.path.join(".")}: ${issue.message}`,
+      };
+    }
     const changedStatus =
       input.status && input.status !== existing.status ? input.status : null;
     const dates = changedStatus
@@ -146,7 +158,12 @@ export class Tracker extends DurableObject<Env> {
           .run();
       return tx
         .update(applications)
-        .set({ ...input, ...dates, updatedAt: new Date() })
+        .set({
+          ...changes,
+          benefits: merged.data,
+          ...dates,
+          updatedAt: new Date(),
+        })
         .where(eq(applications.id, id))
         .returning()
         .get();

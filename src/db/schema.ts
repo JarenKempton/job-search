@@ -1,4 +1,5 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import type { Benefits } from "../applications/benefits";
 import type {
   ApplyMethod,
   EmploymentType,
@@ -49,6 +50,7 @@ export const applications = sqliteTable(
     otherBenefits: text("other_benefits"),
     benefitsNotes: text("benefits_notes"),
     benefitsSource: text("benefits_source"),
+    benefits: text("benefits", { mode: "json" }).$type<Benefits>(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },

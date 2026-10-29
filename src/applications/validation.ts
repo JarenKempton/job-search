@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { benefitsPatchSchema, benefitsSchema } from "./benefits";
 import {
   APPLY_METHODS,
   EMPLOYMENT_TYPES,
@@ -57,6 +58,7 @@ export const applicationFields = {
   otherBenefits: text(5_000),
   benefitsNotes: text(5_000),
   benefitsSource: text(5_000),
+  benefits: benefitsSchema.nullable().optional(),
 };
 
 const salaryOrdered = (input: {
@@ -79,7 +81,10 @@ export const createApplicationSchema = z
 export const updateApplicationSchema = z
   .object(applicationFields)
   .partial()
-  .extend({ today: day.optional() })
+  .extend({
+    today: day.optional(),
+    benefits: benefitsPatchSchema.nullable().optional(),
+  })
   .refine(salaryOrdered, "Salary minimum must not exceed the maximum.");
 
 export const createEventSchema = z.object({

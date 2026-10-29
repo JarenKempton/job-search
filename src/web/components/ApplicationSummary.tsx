@@ -1,11 +1,13 @@
-import { ArrowRightIcon, ExternalLinkIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { BENEFIT_FIELDS, STATUSES, type Status } from "@/applications/fields";
 import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
-import { Choice } from "@/web/components/fields";
+import { StatusBadge } from "@/web/components/StatusBadge";
+import { BenefitsSummary } from "@/web/components/BenefitsSummary";
+import { Badge } from "@/web/components/ui/badge";
 import { Button } from "@/web/components/ui/button";
-import { label, salaryRange, shortDate } from "@/web/format";
+import { daysBetween, label, salaryRange, shortDate } from "@/web/format";
+import { STALE_AFTER_DAYS } from "@/web/stats";
 
 function Fact({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -18,17 +20,15 @@ function Fact({ title, children }: { title: string; children: ReactNode }) {
 
 export function ApplicationSummary({
   row,
-  status,
-  onStatus,
+  onEdit,
 }: {
   row: Application;
-  status: Status;
-  onStatus: (status: Status) => void;
+  onEdit: () => void;
 }) {
   const today = localToday();
   const next = nextAction(row, today);
   const waiting = daysWaiting(row, today);
-  const benefits = BENEFIT_FIELDS.filter(({ key }) => row[key]?.trim());
+  const overdue = next?.on ? Math.max(0, daysBetween(next.on, today)) : 0;
   const where = [row.location, label(row.workMode), label(row.employmentType)]
     .filter((part) => part && part !== "—")
     .join(" · ");
@@ -40,13 +40,10 @@ export function ApplicationSummary({
         <h2>{row.role}</h2>
         {where && <p className="muted">{where}</p>}
         <div className="summary-actions">
-          <Choice
-            id="summary-status"
-            value={status}
-            options={STATUSES}
-            blank={null}
-            onChange={(value) => onStatus(value ?? row.status)}
-          />
+          <StatusBadge status={row.status} />
+          <Button type="button" variant="outline" size="sm" onClick={onEdit}>
+            Edit details
+          </Button>
           {row.jobUrl && (
             <Button asChild variant="outline" size="sm">
               <a href={row.jobUrl} target="_blank" rel="noreferrer">
@@ -58,24 +55,55 @@ export function ApplicationSummary({
       </header>
 
       {next && (
-        <p className={`next-action ${next.due ? "is-due" : ""}`}>
-          <ArrowRightIcon />
-          {next.text}
-          {next.on && <span>{shortDate(next.on)}</span>}
-        </p>
+        <div
+          className="next-action"
+          role="status"
+          title={
+            !row.followUpOn && row.status === "applied"
+              ? `Suggested after ${STALE_AFTER_DAYS} days without a reply`
+              : undefined
+          }
+        >
+          <div>
+            <p>
+              {next.text}
+              {next.on && ` · ${shortDate(next.on)}`}
+            </p>
+          </div>
+          {next.due && (
+            <Badge
+              variant="secondary"
+              className="rounded-md border-0 bg-amber-400/15 text-amber-300"
+            >
+              {overdue > 0 ? `${overdue}d overdue` : "Due today"}
+            </Badge>
+          )}
+        </div>
       )}
 
       <dl className="facts">
-        <Fact title="Salary">{salaryRange(row.salaryMin, row.salaryMax)}</Fact>
-        <Fact title="Fit">{row.fit == null ? "—" : `${row.fit}%`}</Fact>
-        <Fact title="Interest">
-          {row.interest == null ? "—" : `${row.interest}/5`}
-        </Fact>
-        <Fact title="Waiting">{waiting == null ? "—" : `${waiting}d`}</Fact>
-        <Fact title="Applied">{shortDate(row.appliedOn)}</Fact>
-        <Fact title="Heard back">{shortDate(row.heardBackOn)}</Fact>
-        <Fact title="Follow up">{shortDate(row.followUpOn)}</Fact>
-        <Fact title="Source">{label(row.source)}</Fact>
+        {(row.salaryMin != null || row.salaryMax != null) && (
+          <Fact title="Salary">
+            {salaryRange(row.salaryMin, row.salaryMax)}
+          </Fact>
+        )}
+        {row.fit != null && <Fact title="Resume match">{row.fit}%</Fact>}
+        {row.interest != null && <Fact title="Interest">{row.interest}/5</Fact>}
+        {waiting != null &&
+          row.status !== "saved" &&
+          (row.appliedOn || row.heardBackOn) && (
+            <Fact title="Waiting">{waiting}d</Fact>
+          )}
+        {row.appliedOn && (
+          <Fact title="Applied">{shortDate(row.appliedOn)}</Fact>
+        )}
+        {row.heardBackOn && (
+          <Fact title="Heard back">{shortDate(row.heardBackOn)}</Fact>
+        )}
+        {row.followUpOn && (
+          <Fact title="Follow up">{shortDate(row.followUpOn)}</Fact>
+        )}
+        {row.source && <Fact title="Source">{label(row.source)}</Fact>}
       </dl>
 
       {(row.contactName || row.contactEmail) && (
@@ -88,28 +116,7 @@ export function ApplicationSummary({
         </p>
       )}
 
-      <section className="summary-block">
-        <h3 className="section-label">Benefits</h3>
-        {benefits.length === 0 ? (
-          <p className="muted">Nothing recorded yet.</p>
-        ) : (
-          <dl className="benefits">
-            {benefits.map(({ key, title }) => (
-              <div key={key}>
-                <dt>{title}</dt>
-                <dd>{row[key]}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </section>
-
-      {row.notes && (
-        <section className="summary-block">
-          <h3 className="section-label">Notes</h3>
-          <p className="prose">{row.notes}</p>
-        </section>
-      )}
+      <BenefitsSummary row={row} />
     </div>
   );
 }

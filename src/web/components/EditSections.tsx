@@ -6,10 +6,14 @@ import {
   EMPLOYMENT_TYPES,
   REQUIREMENTS,
   SOURCES,
+  STATUSES,
   WORK_MODES,
   type Requirement,
 } from "@/applications/fields";
 import { Choice, Field } from "@/web/components/fields";
+import { BENEFIT_GROUPS } from "@/applications/benefits";
+import { BenefitsEditor } from "@/web/components/BenefitsEditor";
+import { InterestSelect } from "@/web/components/InterestSelect";
 import type { FormApi } from "@/web/components/form-state";
 import { Input } from "@/web/components/ui/input";
 import { Textarea } from "@/web/components/ui/textarea";
@@ -19,13 +23,15 @@ function Section({
   title,
   summary,
   children,
+  open = false,
 }: {
   title: string;
   summary: string;
   children: ReactNode;
+  open?: boolean;
 }) {
   return (
-    <details className="edit-section">
+    <details className="edit-section" open={open}>
       <summary>
         <ChevronRightIcon />
         <strong>{title}</strong>
@@ -44,12 +50,34 @@ export function EditSections({ form, set, text }: FormApi) {
         ? form.requirements.filter((item) => item !== requirement)
         : [...form.requirements, requirement],
     );
-  const benefitCount = BENEFIT_FIELDS.filter(({ key }) =>
-    form[key]?.trim(),
+  const benefitCount = BENEFIT_GROUPS.filter(
+    ({ key }) => form.benefits?.[key] != null,
   ).length;
 
   return (
     <div className="edit-sections">
+      <Section title="Progress" summary="Status and your interest" open>
+        <Field id="status" title="Status">
+          <Choice
+            id="status"
+            value={form.status}
+            options={STATUSES}
+            blank={null}
+            onChange={(value) => set("status", value ?? "saved")}
+          />
+        </Field>
+        <Field
+          id="interest"
+          title="Your interest"
+          hint="Your preference, separate from resume match"
+        >
+          <InterestSelect
+            id="interest"
+            value={form.interest ? Number(form.interest) : null}
+            onChange={(value) => set("interest", value?.toString() ?? "")}
+          />
+        </Field>
+      </Section>
       <Section title="Job" summary="Company, role, link, location">
         <Field id="company" title="Company">
           <Input required {...text("company")} />
@@ -83,7 +111,7 @@ export function EditSections({ form, set, text }: FormApi) {
         </div>
       </Section>
 
-      <Section title="Pay & fit" summary="Salary, fit, interest">
+      <Section title="Pay & fit" summary="Salary and resume match">
         <div className="pair">
           <Field id="salaryMin" title="Salary min" hint="USD/yr — 120k works">
             <Input inputMode="numeric" {...text("salaryMin")} />
@@ -93,11 +121,8 @@ export function EditSections({ form, set, text }: FormApi) {
           </Field>
         </div>
         <div className="pair">
-          <Field id="fit" title="Fit %">
+          <Field id="fit" title="Resume match %">
             <Input type="number" min={0} max={100} {...text("fit")} />
-          </Field>
-          <Field id="interest" title="Interest" hint="1–5">
-            <Input type="number" min={1} max={5} {...text("interest")} />
           </Field>
         </div>
         <Field id="yearsRequired" title="Years experience asked">
@@ -128,17 +153,26 @@ export function EditSections({ form, set, text }: FormApi) {
 
       <Section
         title="Benefits"
-        summary={benefitCount ? `${benefitCount} filled in` : "None yet"}
+        summary={
+          benefitCount ? `${benefitCount} categories recorded` : "Unknown"
+        }
       >
-        <p className="span-2 muted">
-          Leave unknown benefits blank. Add policy details and a source as you
-          learn more.
-        </p>
-        {BENEFIT_FIELDS.map(({ key, title, hint }) => (
-          <Field key={key} id={key} title={title} hint={hint}>
-            <Textarea rows={2} maxLength={5000} {...text(key)} />
-          </Field>
-        ))}
+        <BenefitsEditor
+          value={form.benefits}
+          onChange={(benefits) => set("benefits", benefits)}
+        />
+        <details className="span-2">
+          <summary className="cursor-pointer text-sm font-medium">
+            Legacy policy text & source notes
+          </summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {BENEFIT_FIELDS.map(({ key, title, hint }) => (
+              <Field key={key} id={key} title={title} hint={hint}>
+                <Textarea rows={2} maxLength={5000} {...text(key)} />
+              </Field>
+            ))}
+          </div>
+        </details>
       </Section>
 
       <Section title="How you applied" summary="Source, method, materials">
@@ -184,10 +218,7 @@ export function EditSections({ form, set, text }: FormApi) {
         </div>
       </Section>
 
-      <Section title="Notes & description" summary="Your notes, the posting">
-        <Field id="notes" title="Notes" className="span-2">
-          <Textarea rows={3} {...text("notes")} />
-        </Field>
+      <Section title="Job description" summary="Saved posting text">
         <Field
           id="description"
           title="Job description"

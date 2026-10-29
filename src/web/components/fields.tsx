@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
 import { Label } from "@/web/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/web/components/ui/select";
 import { label } from "@/web/format";
 
 export function Field({
@@ -38,18 +45,23 @@ export function Choice<T extends string>({
   blank?: string | null;
 }) {
   return (
-    <select
-      id={id}
-      className="native-select"
-      value={value ?? ""}
-      onChange={(event) => onChange((event.target.value || null) as T | null)}
+    <Select
+      value={value ?? "__blank"}
+      onValueChange={(next) =>
+        onChange(next === "__blank" ? null : (next as T))
+      }
     >
-      {blank !== null && <option value="">{blank}</option>}
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {label(option)}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent position="popper" align="start">
+        {blank !== null && <SelectItem value="__blank">{blank}</SelectItem>}
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            {label(option)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

@@ -15,6 +15,13 @@
       "when": 1793207597257,
       "tag": "0001_noisy_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793310353279,
+      "tag": "0002_windy_odin",
+      "breakpoints": true
     }
   ]
 }

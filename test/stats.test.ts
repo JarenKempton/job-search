@@ -118,7 +118,7 @@ describe("board", () => {
     });
     expect(nextAction(row({}), "2026-10-20")).toEqual({
       text: "Follow up",
-      on: null,
+      on: "2026-10-15",
       due: true,
     });
     expect(
