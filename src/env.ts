@@ -8,6 +8,8 @@ export interface Env {
   LEGACY_OWNERS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
+  TYPESAFE_API_KEY?: string;
+  JEV_EMAILS?: string;
 }
 
 export type AppEnv = {

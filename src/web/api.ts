@@ -81,3 +81,16 @@ export const resume = {
   remove: () =>
     api<{ removed: boolean }>("/api/v1/resume", { method: "DELETE" }),
 };
+
+export type JevStatus = {
+  available: boolean;
+  enabled: boolean;
+  usedToday: number;
+  dailyLimit: number;
+};
+
+export const jev = {
+  get: () => api<JevStatus>("/api/v1/jev"),
+  set: (enabled: boolean) =>
+    api<JevStatus>("/api/v1/jev", send("PUT", { enabled })),
+};

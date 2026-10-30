@@ -70,7 +70,9 @@ const fields = {
     .min(0)
     .max(100)
     .optional()
-    .describe("How well the applicant matches the posting, 0-100"),
+    .describe(
+      "How well the applicant matches the posting, 0-100. Prefer score_job, which sets this from TypeSafe Jev; never estimate it yourself.",
+    ),
   interest: z.number().int().min(1).max(5).optional(),
   status: z
     .enum(STATUSES)
@@ -357,6 +359,34 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
         await call("/api/v1/resume", "PUT", {
           text,
           fileName: fileName ?? null,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    "score_job",
+    {
+      description:
+        "Score how well the applicant's saved resume matches a job posting, 0-100, using TypeSafe Jev. Use it before adding or applying to decide whether a job is worth the applicant's time. Contact details are removed from the resume before it is sent. Works only after the applicant turns on match scores on the Resume page, and is limited per day; the result says how many are used.",
+      annotations: { openWorldHint: true },
+      inputSchema: {
+        posting: z
+          .string()
+          .min(50)
+          .describe("Full job posting text: role, requirements, location"),
+        applicationId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("Save the score as this application's resume match"),
+      },
+    },
+    async ({ posting, applicationId }) =>
+      reply(
+        await call("/api/v1/jev/score", "POST", {
+          posting,
+          applicationId: applicationId ?? null,
+          today: today(),
         }),
       ),
   );

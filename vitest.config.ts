@@ -10,6 +10,8 @@ export default defineConfig({
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations("./drizzle"),
           LEGACY_OWNERS: JSON.stringify({ "Mover@Example.Test": "JAREN_D1" }),
+          JEV_EMAILS: "Jaren@Example.Test, other@example.test",
+          TYPESAFE_API_KEY: "test-key",
         },
       },
     })),

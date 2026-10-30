@@ -4,7 +4,7 @@ import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 import migrations from "../drizzle/migrations.js";
 import { mergeBenefits } from "./applications/benefits";
 import type { Status } from "./applications/fields";
-import { datesForStatus, statusNote } from "./applications/status";
+import { datesForStatus, statusNote, utcToday } from "./applications/status";
 import type {
   CreateApplicationInput,
   CreateEventInput,
@@ -14,10 +14,18 @@ import type {
 import { database, type Database } from "./db/client";
 import { applicationEvents, applications, resumes } from "./db/schema";
 import type { Env } from "./env";
+import { askJev, JEV_DAILY_LIMIT } from "./jev";
 
 const CHANGED = JSON.stringify({ type: "changed" });
 const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
+const JEV = "jev";
+
+type JevSettings = { enabled: boolean; day: string; used: number };
+
+const failure = (status: number, code: string, message: string) => ({
+  failure: { status, code, message },
+});
 
 type NewApplication = Omit<CreateApplicationInput, "today">;
 type ApplicationChanges = Omit<UpdateApplicationInput, "today">;
@@ -249,6 +257,70 @@ export class Tracker extends DurableObject<Env> {
     return Boolean(removed);
   }
 
+  jev() {
+    const { enabled, used } = this.jevSettings();
+    return {
+      available: this.jevAllowed(),
+      enabled,
+      usedToday: used,
+      dailyLimit: JEV_DAILY_LIMIT,
+    };
+  }
+
+  setJev(enabled: boolean) {
+    if (enabled && !this.jevAllowed())
+      return failure(
+        403,
+        "jev_unavailable",
+        "Match scores aren't available for this account yet.",
+      );
+    this.ctx.storage.kv.put(JEV, { ...this.jevSettings(), enabled });
+    this.changed();
+    return this.jev();
+  }
+
+  async scoreJob(posting: string, applicationId: string | null, today: string) {
+    const settings = this.jevSettings();
+    if (!this.jevAllowed() || !settings.enabled)
+      return failure(
+        403,
+        "jev_off",
+        "Match scores are off. The applicant can turn them on from the Resume page.",
+      );
+    const resume = this.resume();
+    if (!resume)
+      return failure(
+        409,
+        "no_resume",
+        "Save a resume on the Resume page first.",
+      );
+    if (applicationId && !this.application(applicationId))
+      return failure(404, "application_not_found", "Application not found.");
+    if (settings.used >= JEV_DAILY_LIMIT)
+      return failure(
+        429,
+        "jev_daily_limit",
+        `All ${JEV_DAILY_LIMIT} match scores for today are used. They reset at midnight UTC.`,
+      );
+    this.ctx.storage.kv.put(JEV, { ...settings, used: settings.used + 1 });
+    const result = await askJev(
+      this.env.TYPESAFE_API_KEY ?? "",
+      resume.text,
+      posting,
+    );
+    if ("error" in result) {
+      const now = this.jevSettings();
+      this.ctx.storage.kv.put(JEV, { ...now, used: Math.max(0, now.used - 1) });
+      return result.error === "busy"
+        ? failure(503, "jev_busy", "TypeSafe is busy. Try again in a minute.")
+        : failure(502, "jev_failed", "TypeSafe couldn't score this posting.");
+    }
+    if (applicationId)
+      this.update(applicationId, { fit: result.match.match }, today);
+    else this.changed();
+    return { ...result.match, ...this.jev() };
+  }
+
   fetch() {
     const { 0: client, 1: server } = new WebSocketPair();
     this.ctx.acceptWebSocket(server);
@@ -263,6 +335,22 @@ export class Tracker extends DurableObject<Env> {
       .from(applications)
       .where(eq(applications.id, id))
       .get();
+  }
+
+  private jevAllowed() {
+    return (this.env.JEV_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .includes(this.ctx.id.name ?? "");
+  }
+
+  private jevSettings(): JevSettings {
+    const today = utcToday();
+    const saved = this.ctx.storage.kv.get<JevSettings>(JEV);
+    const enabled = saved?.enabled ?? false;
+    return saved?.day === today
+      ? { enabled, day: today, used: saved.used }
+      : { enabled, day: today, used: 0 };
   }
 
   private changed() {

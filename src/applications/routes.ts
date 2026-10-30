@@ -7,9 +7,21 @@ import { utcToday } from "./status";
 import {
   createApplicationSchema,
   createEventSchema,
+  jevSettingsSchema,
   resumeSchema,
+  scoreJobSchema,
   updateApplicationSchema,
 } from "./validation";
+
+function orFail<T extends object>(
+  result: T | { failure: { status: number; code: string; message: string } },
+): T {
+  if ("failure" in result) {
+    const { status, code, message } = result.failure;
+    throw new ApiError(status, code, message);
+  }
+  return result;
+}
 
 function notFound(): never {
   throw new ApiError(404, "application_not_found", "Application not found.");
@@ -80,6 +92,29 @@ export const applicationRoutes = new Hono<AppEnv>()
   .delete("/api/v1/resume", async (context) =>
     ok({ removed: await context.var.tracker.removeResume() }),
   )
+  .get("/api/v1/jev", async (context) => ok(await context.var.tracker.jev()))
+  .put("/api/v1/jev", async (context) => {
+    const { enabled } = jevSettingsSchema.parse(
+      await readJson(context.req.raw),
+    );
+    return ok(orFail(await context.var.tracker.setJev(enabled)));
+  })
+  .post("/api/v1/jev/score", async (context) => {
+    const {
+      posting,
+      applicationId,
+      today = utcToday(),
+    } = scoreJobSchema.parse(await readJson(context.req.raw));
+    return ok(
+      orFail(
+        await context.var.tracker.scoreJob(
+          posting,
+          applicationId ?? null,
+          today,
+        ),
+      ),
+    );
+  })
   .get("/api/v1/live", (context) => {
     if (context.req.header("upgrade")?.toLowerCase() !== "websocket")
       throw new ApiError(

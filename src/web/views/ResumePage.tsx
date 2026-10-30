@@ -1,3 +1,4 @@
+import { MatchScoresCard } from "@/web/components/MatchScoresCard";
 import { ResumeCard } from "@/web/components/ResumeCard";
 
 export function ResumePage() {
@@ -7,6 +8,7 @@ export function ResumePage() {
         <h1>Resume</h1>
       </header>
       <ResumeCard />
+      <MatchScoresCard />
     </div>
   );
 }
