@@ -130,7 +130,7 @@ export function ResumeCard() {
               aria-hidden="true"
               className="size-4 text-muted-foreground"
             />
-            <div className="min-w-0 flex-1 text-sm">
+            <div className="min-w-0 flex-1 basis-48 text-sm">
               <p className="truncate font-medium">
                 {saved.fileName ?? "Pasted resume"}
               </p>
