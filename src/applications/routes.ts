@@ -7,7 +7,7 @@ import { utcToday } from "./status";
 import {
   createApplicationSchema,
   createEventSchema,
-  jevSettingsSchema,
+  matchSettingsSchema,
   resumeSchema,
   scoreJobSchema,
   updateApplicationSchema,
@@ -92,14 +92,16 @@ export const applicationRoutes = new Hono<AppEnv>()
   .delete("/api/v1/resume", async (context) =>
     ok({ removed: await context.var.tracker.removeResume() }),
   )
-  .get("/api/v1/jev", async (context) => ok(await context.var.tracker.jev()))
-  .put("/api/v1/jev", async (context) => {
-    const { enabled } = jevSettingsSchema.parse(
+  .get("/api/v1/match-scores/settings", async (context) =>
+    ok(await context.var.tracker.matchScores()),
+  )
+  .put("/api/v1/match-scores/settings", async (context) => {
+    const { enabled } = matchSettingsSchema.parse(
       await readJson(context.req.raw),
     );
-    return ok(await context.var.tracker.setJev(enabled));
+    return ok(await context.var.tracker.setMatchScores(enabled));
   })
-  .post("/api/v1/jev/score", async (context) => {
+  .post("/api/v1/match-scores", async (context) => {
     const {
       posting,
       applicationId,

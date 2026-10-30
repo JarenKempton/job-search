@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { combine, JEV_MODEL, redact } from "../src/jev";
+import { combine, MATCH_MODEL, redact } from "../src/match";
 import { call, data, rpc } from "./helpers";
 
 const RESUME = `Alex Rivera
@@ -12,7 +12,7 @@ const POSTING =
   "Senior TypeScript engineer. Requires 5+ years with React and Node.js, PostgreSQL experience, remote in the US.";
 
 const ANSWERS = {
-  model: "jev-1.14.0",
+  model: "clef",
   answers: {
     skills: { type: "score", score: 3, confidence: 0.9 },
     experience: { type: "score", score: 2, confidence: 0.6 },
@@ -22,27 +22,37 @@ const ANSWERS = {
   usage: { input_tokens: 420, output_tokens: 0 },
 };
 
-function jevReturns(status: number, body: unknown = ANSWERS) {
-  return vi
-    .spyOn(globalThis, "fetch")
-    .mockImplementation(
-      async () => new Response(JSON.stringify(body), { status }),
-    );
+const tracker = () =>
+  env.TRACKER.get(env.TRACKER.idFromName("jaren@example.test"));
+
+async function clefReturns(answer: () => unknown) {
+  const run = vi.fn(async () => answer());
+  await runInDurableObject(tracker(), (instance) => {
+    const self = instance as unknown as { env: Record<string, unknown> };
+    self.env = { ...self.env, AI: { run } };
+  });
+  return run;
 }
+
+const answers = () => clefReturns(() => ANSWERS);
 
 async function turnOn(ctx?: ExecutionContext) {
   await call("/api/v1/resume", { method: "PUT", json: { text: RESUME } }, ctx);
-  return call("/api/v1/jev", { method: "PUT", json: { enabled: true } }, ctx);
+  return call(
+    "/api/v1/match-scores/settings",
+    { method: "PUT", json: { enabled: true } },
+    ctx,
+  );
 }
 
 const score = (json: Record<string, unknown>, ctx?: ExecutionContext) =>
-  call("/api/v1/jev/score", { method: "POST", json }, ctx);
+  call("/api/v1/match-scores", { method: "POST", json }, ctx);
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Jev match scores", () => {
+describe("match scores", () => {
   it("removes contact details but keeps dates", () => {
     const redacted = redact(RESUME);
     expect(redacted).not.toMatch(
@@ -73,20 +83,23 @@ describe("Jev match scores", () => {
   });
 
   it("is on by default, needs a resume, and refuses once turned off", async () => {
-    const jev = jevReturns(200);
-    expect(await data(await call("/api/v1/jev"))).toEqual({
+    const clef = await answers();
+    expect(await data(await call("/api/v1/match-scores/settings"))).toEqual({
       enabled: true,
       usedToday: 0,
-      dailyLimit: 50,
+      dailyLimit: 25,
     });
     expect((await score({ posting: POSTING })).status).toBe(409);
-    await call("/api/v1/jev", { method: "PUT", json: { enabled: false } });
+    await call("/api/v1/match-scores/settings", {
+      method: "PUT",
+      json: { enabled: false },
+    });
     expect((await score({ posting: POSTING })).status).toBe(403);
-    expect(jev).not.toHaveBeenCalled();
+    expect(clef).not.toHaveBeenCalled();
   });
 
-  it("sends the redacted resume to the pinned model and saves the match on the application", async () => {
-    const jev = jevReturns(200);
+  it("sends the redacted resume to Clef and saves the match on the application", async () => {
+    const clef = await answers();
     await turnOn();
     const { id } = await data<{ id: string }>(
       await call("/api/v1/applications", {
@@ -99,55 +112,62 @@ describe("Jev match scores", () => {
         },
       }),
     );
-    const result = await data(
+    const result = await data<{ match: number }>(
       await score({ posting: POSTING, applicationId: id }),
     );
-    expect(result).toMatchObject({
-      usedToday: 1,
-      dailyLimit: 50,
-      model: "jev-1.14.0",
-    });
-    const [url, init] = jev.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://api.typesafe.ai/v1/systemone");
-    expect(new Headers(init.headers).get("authorization")).toBe(
-      "Bearer test-key",
-    );
-    const sent = JSON.parse(init.body as string);
-    expect(sent.model).toBe(JEV_MODEL);
-    expect(sent.state.job_posting).toBe(POSTING);
-    expect(sent.state.resume).not.toMatch(/example\.com|555/);
+    expect(result).toMatchObject({ usedToday: 1, dailyLimit: 25 });
+    const [model, input] = clef.mock.calls[0] as unknown as [
+      string,
+      { model: string; state: { resume: string; job_posting: string } },
+    ];
+    expect(model).toBe(MATCH_MODEL);
+    expect(input.model).toBe("clef");
+    expect(input.state.job_posting).toBe(POSTING);
+    expect(input.state.resume).not.toMatch(/example\.com|555/);
     expect(
       (await data<{ fit: number }>(await call(`/api/v1/applications/${id}`)))
         .fit,
     ).toBe(result.match);
   });
 
-  it("stops at the daily limit without calling TypeSafe", async () => {
-    const jev = jevReturns(200);
+  it("stops at the daily limit, even if the client sends another date", async () => {
+    const clef = await answers();
     await turnOn();
-    const stub = env.TRACKER.get(env.TRACKER.idFromName("jaren@example.test"));
-    await runInDurableObject(stub, (_, state) => {
-      const saved = state.storage.kv.get<{ day: string }>("jev")!;
-      state.storage.kv.put("jev", { ...saved, used: 50 });
+    await runInDurableObject(tracker(), (_, state) => {
+      const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
+      state.storage.kv.put("matchScores", { ...saved, used: 25 });
     });
     const limited = await score({ posting: POSTING, today: "2001-01-01" });
     expect(limited.status).toBe(429);
-    expect(jev).not.toHaveBeenCalled();
+    expect(clef).not.toHaveBeenCalled();
   });
 
-  it("doesn't count a score when TypeSafe is busy", async () => {
-    jevReturns(429, { detail: "rate limited" });
+  it("tells the AI when the shared free allowance is used up, and doesn't count it", async () => {
+    await clefReturns(() => {
+      throw new Error(
+        "4006: you have used up your daily free allocation of 10,000 neurons",
+      );
+    });
     await turnOn();
-    expect((await score({ posting: POSTING })).status).toBe(503);
-    expect(await data(await call("/api/v1/jev"))).toMatchObject({
+    const refused = await score({ posting: POSTING });
+    expect(refused.status).toBe(503);
+    expect(await refused.text()).toMatch(
+      /shared allowance.*Don't call score_job again today/,
+    );
+    expect(
+      await data(await call("/api/v1/match-scores/settings")),
+    ).toMatchObject({
       usedToday: 0,
     });
   });
 
   it("tells the AI what to do when scores are off, instead of a bare failure", async () => {
-    const jev = jevReturns(200);
+    const clef = await answers();
     await turnOn();
-    await call("/api/v1/jev", { method: "PUT", json: { enabled: false } });
+    await call("/api/v1/match-scores/settings", {
+      method: "PUT",
+      json: { enabled: false },
+    });
     const result = (await rpc("tools/call", {
       name: "score_job",
       arguments: { posting: POSTING },
@@ -155,11 +175,11 @@ describe("Jev match scores", () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toMatch(/Don't call score_job again/);
     expect(result.content[0].text).toMatch(/Don't estimate a match yourself/);
-    expect(jev).not.toHaveBeenCalled();
+    expect(clef).not.toHaveBeenCalled();
   });
 
   it("scores through the MCP tool", async () => {
-    jevReturns(200);
+    await answers();
     await turnOn();
     const result = (await rpc("tools/call", {
       name: "score_job",

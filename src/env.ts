@@ -3,12 +3,12 @@ import type { Tracker } from "./tracker";
 export interface Env {
   TRACKER: DurableObjectNamespace<Tracker>;
   ASSETS: Fetcher;
+  AI: Ai;
   JAREN_D1?: D1Database;
   MAKAYLA_D1?: D1Database;
   LEGACY_OWNERS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
-  TYPESAFE_API_KEY?: string;
 }
 
 export type AppEnv = {

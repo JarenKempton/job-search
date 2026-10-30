@@ -14,14 +14,14 @@ import type {
 import { database, type Database } from "./db/client";
 import { applicationEvents, applications, resumes } from "./db/schema";
 import type { Env } from "./env";
-import { askJev, JEV_DAILY_LIMIT } from "./jev";
+import { askClef, DAILY_SCORES } from "./match";
 
 const CHANGED = JSON.stringify({ type: "changed" });
 const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
-const JEV = "jev";
+const MATCH_SCORES = "matchScores";
 
-type JevSettings = { enabled: boolean; day: string; used: number };
+type MatchSettings = { enabled: boolean; day: string; used: number };
 
 const failure = (status: number, code: string, message: string) => ({
   failure: { status, code, message },
@@ -257,27 +257,27 @@ export class Tracker extends DurableObject<Env> {
     return Boolean(removed);
   }
 
-  jev() {
-    const { enabled, used } = this.jevSettings();
+  matchScores() {
+    const { enabled, used } = this.matchSettings();
     return {
       enabled,
       usedToday: used,
-      dailyLimit: JEV_DAILY_LIMIT,
+      dailyLimit: DAILY_SCORES,
     };
   }
 
-  setJev(enabled: boolean) {
-    this.ctx.storage.kv.put(JEV, { ...this.jevSettings(), enabled });
+  setMatchScores(enabled: boolean) {
+    this.ctx.storage.kv.put(MATCH_SCORES, { ...this.matchSettings(), enabled });
     this.changed();
-    return this.jev();
+    return this.matchScores();
   }
 
   async scoreJob(posting: string, applicationId: string | null, today: string) {
-    const settings = this.jevSettings();
+    const settings = this.matchSettings();
     if (!settings.enabled)
       return failure(
         403,
-        "jev_off",
+        "match_scores_off",
         "Match scores are turned off for this person. Don't call score_job again in this conversation; tell them they can turn on match scores on the Resume page. Don't estimate a match yourself; leave the resume match blank.",
       );
     const resume = this.resume();
@@ -289,37 +289,39 @@ export class Tracker extends DurableObject<Env> {
       );
     if (applicationId && !this.application(applicationId))
       return failure(404, "application_not_found", "Application not found.");
-    if (settings.used >= JEV_DAILY_LIMIT)
+    if (settings.used >= DAILY_SCORES)
       return failure(
         429,
-        "jev_daily_limit",
-        `All ${JEV_DAILY_LIMIT} of today's match scores are used; they reset at midnight UTC. Don't call score_job again today. Don't estimate a match yourself; leave the resume match blank.`,
+        "match_score_daily_limit",
+        `All ${DAILY_SCORES} of today's match scores are used; they reset at midnight UTC. Don't call score_job again today. Don't estimate a match yourself; leave the resume match blank.`,
       );
-    this.ctx.storage.kv.put(JEV, { ...settings, used: settings.used + 1 });
-    const result = await askJev(
-      this.env.TYPESAFE_API_KEY ?? "",
-      resume.text,
-      posting,
-    );
+    this.ctx.storage.kv.put(MATCH_SCORES, {
+      ...settings,
+      used: settings.used + 1,
+    });
+    const result = await askClef(this.env.AI, resume.text, posting);
     if ("error" in result) {
-      const now = this.jevSettings();
-      this.ctx.storage.kv.put(JEV, { ...now, used: Math.max(0, now.used - 1) });
-      return result.error === "busy"
+      const now = this.matchSettings();
+      this.ctx.storage.kv.put(MATCH_SCORES, {
+        ...now,
+        used: Math.max(0, now.used - 1),
+      });
+      return result.error === "allowance"
         ? failure(
             503,
-            "jev_busy",
-            "TypeSafe is busy. Wait about a minute, then try once more. If it's still busy, stop and try again later.",
+            "match_score_allowance",
+            "Today's shared allowance for match scores is used up; it resets at midnight UTC. Don't call score_job again today. Don't estimate a match yourself; leave the resume match blank.",
           )
         : failure(
             502,
-            "jev_failed",
-            "TypeSafe couldn't score this posting. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
+            "match_score_failed",
+            "This posting couldn't be scored. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
           );
     }
     if (applicationId)
       this.update(applicationId, { fit: result.match.match }, today);
     else this.changed();
-    return { ...result.match, ...this.jev() };
+    return { ...result.match, ...this.matchScores() };
   }
 
   fetch() {
@@ -338,9 +340,9 @@ export class Tracker extends DurableObject<Env> {
       .get();
   }
 
-  private jevSettings(): JevSettings {
+  private matchSettings(): MatchSettings {
     const today = utcToday();
-    const saved = this.ctx.storage.kv.get<JevSettings>(JEV);
+    const saved = this.ctx.storage.kv.get<MatchSettings>(MATCH_SCORES);
     const enabled = saved?.enabled ?? true;
     return saved?.day === today
       ? { enabled, day: today, used: saved.used }

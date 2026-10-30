@@ -1,6 +1,5 @@
-export const JEV_DAILY_LIMIT = 50;
-export const JEV_MODEL = "jev-1.14.0";
-const JEV_URL = "https://api.typesafe.ai/v1/systemone";
+export const DAILY_SCORES = 25;
+export const MATCH_MODEL = "@cf/cloudflare/clef";
 
 const LEVELS = {
   skills: [
@@ -27,8 +26,7 @@ const WEIGHTS = { skills: 0.45, experience: 0.3, domain: 0.25 };
 
 type Dimension = keyof typeof LEVELS;
 type ScoreAnswer = { score: number; confidence: number | null };
-type JevResponse = {
-  model: string;
+type ClefResponse = {
   answers: Record<Dimension, ScoreAnswer> & {
     hard_requirements: { noul: number };
   };
@@ -41,7 +39,6 @@ export type JobMatch = {
   domain: number;
   meetsHardRequirements: number;
   confidence: number | null;
-  model: string;
 };
 
 export function redact(resume: string) {
@@ -62,14 +59,14 @@ export function redact(resume: string) {
     );
 }
 
-export function jevRequest(resume: string, posting: string) {
+export function matchRequest(resume: string, posting: string) {
   const score = (instructions: string, dimension: Dimension) => ({
     type: "score",
     instructions,
     criteria: LEVELS[dimension],
   });
   return {
-    model: JEV_MODEL,
+    model: "clef",
     state: { resume: redact(resume), job_posting: posting },
     questions: {
       skills: score(
@@ -93,7 +90,7 @@ export function jevRequest(resume: string, posting: string) {
   };
 }
 
-export function combine({ model, answers }: JevResponse): JobMatch {
+export function combine({ answers }: ClefResponse): JobMatch {
   const percent = (dimension: Dimension) =>
     answers[dimension].score / (LEVELS[dimension].length - 1);
   const weighted = (Object.keys(WEIGHTS) as Dimension[]).reduce(
@@ -111,25 +108,23 @@ export function combine({ model, answers }: JevResponse): JobMatch {
     domain: Math.round(100 * percent("domain")),
     meetsHardRequirements: Math.round(100 * hard),
     confidence: confidences.length ? Math.min(...confidences) : null,
-    model,
   };
 }
 
-export async function askJev(apiKey: string, resume: string, posting: string) {
-  const response = await fetch(JEV_URL, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(jevRequest(resume, posting)),
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (response.status === 429 || response.status === 529)
-    return { error: "busy" as const };
-  if (!response.ok) {
-    console.error(JSON.stringify({ jevStatus: response.status }));
-    return { error: "failed" as const };
+export async function askClef(ai: Ai, resume: string, posting: string) {
+  try {
+    const response = (await ai.run(
+      MATCH_MODEL as never,
+      matchRequest(resume, posting) as never,
+    )) as unknown as ClefResponse;
+    return { match: combine(response) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(JSON.stringify({ clefError: message.slice(0, 200) }));
+    return {
+      error: /neuron|4006|daily/i.test(message)
+        ? ("allowance" as const)
+        : ("failed" as const),
+    };
   }
-  return { match: combine((await response.json()) as JevResponse) };
 }

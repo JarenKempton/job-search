@@ -82,14 +82,17 @@ export const resume = {
     api<{ removed: boolean }>("/api/v1/resume", { method: "DELETE" }),
 };
 
-export type JevStatus = {
+export type MatchScoreStatus = {
   enabled: boolean;
   usedToday: number;
   dailyLimit: number;
 };
 
-export const jev = {
-  get: () => api<JevStatus>("/api/v1/jev"),
+export const matchScores = {
+  get: () => api<MatchScoreStatus>("/api/v1/match-scores/settings"),
   set: (enabled: boolean) =>
-    api<JevStatus>("/api/v1/jev", send("PUT", { enabled })),
+    api<MatchScoreStatus>(
+      "/api/v1/match-scores/settings",
+      send("PUT", { enabled }),
+    ),
 };

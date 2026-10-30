@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { jev, type JevStatus } from "@/web/api";
+import { matchScores, type MatchScoreStatus } from "@/web/api";
 import { Card, CardContent } from "@/web/components/ui/card";
 import { Label } from "@/web/components/ui/label";
+import { Progress } from "@/web/components/ui/progress";
 import { Switch } from "@/web/components/ui/switch";
 
 export function MatchScoresCard() {
-  const [status, setStatus] = useState<JevStatus | null>(null);
+  const [status, setStatus] = useState<MatchScoreStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    jev
+    matchScores
       .get()
       .then(setStatus)
       .catch((cause: Error) => setError(cause.message));
@@ -20,7 +21,7 @@ export function MatchScoresCard() {
   async function toggle(enabled: boolean) {
     setError(null);
     try {
-      setStatus(await jev.set(enabled));
+      setStatus(await matchScores.set(enabled));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -30,9 +31,7 @@ export function MatchScoresCard() {
     <Card>
       <CardContent className="space-y-2">
         <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="match-scores">
-            Send my resume to TypeSafe for match scores
-          </Label>
+          <Label htmlFor="match-scores">Score jobs against my resume</Label>
           <Switch
             id="match-scores"
             checked={status.enabled}
@@ -40,9 +39,19 @@ export function MatchScoresCard() {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Contact details are removed first. {status.usedToday} of{" "}
-          {status.dailyLimit} used today.
+          Scored by Cloudflare's Clef model, which keeps nothing. Contact
+          details are removed first.
         </p>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <Progress
+            aria-label="Match scores used today"
+            value={(100 * status.usedToday) / status.dailyLimit}
+            className="h-1.5"
+          />
+          <span className="shrink-0 tabular">
+            {status.usedToday} of {status.dailyLimit} today
+          </span>
+        </div>
         {error && (
           <p className="form-error" role="alert">
             {error}

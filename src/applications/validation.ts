@@ -103,7 +103,7 @@ export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
-export const jevSettingsSchema = z.object({ enabled: z.boolean() });
+export const matchSettingsSchema = z.object({ enabled: z.boolean() });
 
 export const scoreJobSchema = z.object({
   posting: z.string().trim().min(50, "Paste the full job posting.").max(30_000),

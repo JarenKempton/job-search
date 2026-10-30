@@ -6,11 +6,11 @@ export default defineConfig({
   plugins: [
     cloudflareTest(async () => ({
       wrangler: { configPath: "./wrangler.jsonc" },
+      remoteBindings: false,
       miniflare: {
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations("./drizzle"),
           LEGACY_OWNERS: JSON.stringify({ "Mover@Example.Test": "JAREN_D1" }),
-          TYPESAFE_API_KEY: "test-key",
         },
       },
     })),

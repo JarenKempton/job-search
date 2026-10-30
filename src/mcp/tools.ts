@@ -71,7 +71,7 @@ const fields = {
     .max(100)
     .optional()
     .describe(
-      "How well the applicant matches the posting, 0-100. Prefer score_job, which sets this from TypeSafe Jev; never estimate it yourself.",
+      "How well the applicant matches the posting, 0-100. Prefer score_job, which sets this from a decision model; never estimate it yourself.",
     ),
   interest: z.number().int().min(1).max(5).optional(),
   status: z
@@ -367,7 +367,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "score_job",
     {
       description:
-        "Score how well the applicant's saved resume matches a job posting, 0-100, using TypeSafe Jev. Use it before adding or applying to decide whether a job is worth the applicant's time. Contact details are removed from the resume before it is sent. Works only after the applicant turns on match scores on the Resume page, and is limited per day; the result says how many are used.",
+        "Score how well the applicant's saved resume matches a job posting, 0-100, using Cloudflare's Clef decision model. Use it before adding or applying to decide whether a job is worth the applicant's time. Contact details are removed from the resume first. The applicant can turn match scores off on the Resume page, and scores are limited per day; the result says how many are used.",
       annotations: { openWorldHint: true },
       inputSchema: {
         posting: z
@@ -383,7 +383,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     },
     async ({ posting, applicationId }) =>
       reply(
-        await call("/api/v1/jev/score", "POST", {
+        await call("/api/v1/match-scores", "POST", {
           posting,
           applicationId: applicationId ?? null,
           today: today(),
