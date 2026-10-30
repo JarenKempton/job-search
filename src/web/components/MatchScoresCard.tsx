@@ -5,6 +5,15 @@ import { Label } from "@/web/components/ui/label";
 import { Progress } from "@/web/components/ui/progress";
 import { Switch } from "@/web/components/ui/switch";
 
+function resetTime() {
+  const midnight = new Date();
+  midnight.setUTCHours(24, 0, 0, 0);
+  return midnight.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function MatchScoresCard() {
   const [status, setStatus] = useState<MatchScoreStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +73,8 @@ export function MatchScoresCard() {
             className="h-1.5"
           />
           <span className="shrink-0 tabular">
-            {status.usedToday} of {status.dailyLimit} today
+            {status.usedToday} of {status.dailyLimit} today · resets{" "}
+            {resetTime()}
           </span>
         </div>
         {error && (

@@ -115,6 +115,10 @@ export const scoreJobsSchema = z.object({
           .trim()
           .min(400, "Send the full job posting, not a summary.")
           .max(30_000),
+        requirements: z
+          .array(z.string().trim().min(1).max(120))
+          .max(15)
+          .optional(),
         applicationId: z.uuid().nullable().optional(),
       }),
     )

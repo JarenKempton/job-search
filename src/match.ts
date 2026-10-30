@@ -29,7 +29,7 @@ type ScoreAnswer = { score: number; confidence: number | null };
 type ClefResponse = {
   answers: Record<Dimension, ScoreAnswer> & {
     hard_requirements: { noul: number };
-  };
+  } & Partial<Record<`requirement_${number}`, { noul: number }>>;
 };
 
 export type JobMatch = {
@@ -38,7 +38,9 @@ export type JobMatch = {
   experience: number;
   domain: number;
   meetsHardRequirements: number;
-  confidence: number | null;
+  met: string[];
+  missing: string[];
+  unclear: string[];
 };
 
 const HEADER_LINES = 6;
@@ -102,7 +104,11 @@ export function redact(resume: string) {
   );
 }
 
-export function matchRequest(resume: string, posting: string) {
+export function matchRequest(
+  resume: string,
+  posting: string,
+  requirements: string[] = [],
+) {
   const score = (instructions: string, dimension: Dimension) => ({
     type: "score",
     instructions,
@@ -129,6 +135,15 @@ export function matchRequest(resume: string, posting: string) {
         instructions:
           "Does the resume meet every hard requirement the job posting states, such as a required degree, license, certification, security clearance or location? Answer yes when the posting states none.",
       },
+      ...Object.fromEntries(
+        requirements.map((requirement, index) => [
+          `requirement_${index}`,
+          {
+            type: "noul",
+            instructions: `Does the resume show: ${requirement}?`,
+          },
+        ]),
+      ),
     },
   };
 }
@@ -139,13 +154,19 @@ const inRange = (value: unknown, max: number): value is number =>
   value >= 0 &&
   value <= max;
 
-export function combine({ answers }: ClefResponse): JobMatch {
+export function combine(
+  { answers }: ClefResponse,
+  requirements: string[] = [],
+): JobMatch {
   const dimensions = Object.keys(LEVELS) as Dimension[];
   if (
     !dimensions.every((dimension) =>
       inRange(answers?.[dimension]?.score, LEVELS[dimension].length - 1),
     ) ||
-    !inRange(answers?.hard_requirements?.noul, 1)
+    !inRange(answers?.hard_requirements?.noul, 1) ||
+    !requirements.every((_, index) =>
+      inRange(answers?.[`requirement_${index}`]?.noul, 1),
+    )
   )
     throw new Error("Clef returned an answer outside the expected range.");
   const percent = (dimension: Dimension) =>
@@ -155,26 +176,33 @@ export function combine({ answers }: ClefResponse): JobMatch {
     0,
   );
   const hard = answers.hard_requirements.noul;
-  const confidences = (Object.keys(LEVELS) as Dimension[])
-    .map((dimension) => answers[dimension].confidence)
-    .filter((value): value is number => value !== null);
+  const chance = (index: number) => answers[`requirement_${index}`]!.noul;
   return {
     match: Math.round(100 * weighted * (0.75 + 0.25 * hard)),
     skills: Math.round(100 * percent("skills")),
     experience: Math.round(100 * percent("experience")),
     domain: Math.round(100 * percent("domain")),
     meetsHardRequirements: Math.round(100 * hard),
-    confidence: confidences.length ? Math.min(...confidences) : null,
+    met: requirements.filter((_, index) => chance(index) >= 0.7),
+    missing: requirements.filter((_, index) => chance(index) <= 0.3),
+    unclear: requirements.filter(
+      (_, index) => chance(index) > 0.3 && chance(index) < 0.7,
+    ),
   };
 }
 
-export async function askClef(ai: Ai, resume: string, posting: string) {
+export async function askClef(
+  ai: Ai,
+  resume: string,
+  posting: string,
+  requirements: string[] = [],
+) {
   try {
     const response = (await ai.run(
       MATCH_MODEL as never,
-      matchRequest(resume, posting) as never,
+      matchRequest(resume, posting, requirements) as never,
     )) as unknown as ClefResponse;
-    return { match: combine(response) };
+    return { match: combine(response, requirements) };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(JSON.stringify({ clefError: message.slice(0, 200) }));

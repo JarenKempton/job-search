@@ -1,12 +1,19 @@
 import { ExternalLinkIcon } from "lucide-react";
-import { matchRating } from "@/applications/fields";
 import type { ReactNode } from "react";
+import { matchRating } from "@/applications/fields";
 import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { BenefitsSummary } from "@/web/components/BenefitsSummary";
+import { MatchBreakdown } from "@/web/components/MatchBreakdown";
 import { Badge } from "@/web/components/ui/badge";
 import { Button } from "@/web/components/ui/button";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/web/components/ui/tabs";
 import { daysBetween, label, salaryRange, shortDate } from "@/web/format";
 import { STALE_AFTER_DAYS } from "@/web/stats";
 
@@ -22,9 +29,11 @@ function Fact({ title, children }: { title: string; children: ReactNode }) {
 export function ApplicationSummary({
   row,
   onEdit,
+  timeline,
 }: {
   row: Application;
   onEdit: () => void;
+  timeline: ReactNode;
 }) {
   const today = localToday();
   const next = nextAction(row, today);
@@ -55,80 +64,87 @@ export function ApplicationSummary({
         </div>
       </header>
 
-      {next && (
-        <div
-          className="next-action"
-          role="status"
-          title={
-            !row.followUpOn && row.status === "applied"
-              ? `Suggested after ${STALE_AFTER_DAYS} days without a reply`
-              : undefined
-          }
-        >
-          <div>
-            <p>
-              {next.text}
-              {next.on && ` · ${shortDate(next.on)}`}
-            </p>
-          </div>
-          {next.due && (
-            <Badge
-              variant="secondary"
-              className="rounded-md border-0 bg-amber-400/15 text-amber-300"
+      <Tabs defaultValue="overview">
+        <TabsList className="w-full">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="summary pt-3">
+          {next && (
+            <div
+              className="next-action"
+              role="status"
+              title={
+                !row.followUpOn && row.status === "applied"
+                  ? `Suggested after ${STALE_AFTER_DAYS} days without a reply`
+                  : undefined
+              }
             >
-              {overdue > 0 ? `${overdue}d overdue` : "Due today"}
-            </Badge>
+              <div>
+                <p>
+                  {next.text}
+                  {next.on && ` · ${shortDate(next.on)}`}
+                </p>
+              </div>
+              {next.due && (
+                <Badge
+                  variant="secondary"
+                  className="rounded-md border-0 bg-amber-400/15 text-amber-300"
+                >
+                  {overdue > 0 ? `${overdue}d overdue` : "Due today"}
+                </Badge>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      <dl className="facts">
-        {(row.salaryMin != null || row.salaryMax != null) && (
-          <Fact title="Salary">
-            {salaryRange(row.salaryMin, row.salaryMax)}
-          </Fact>
-        )}
-        {row.fit != null && (
-          <Fact title="Resume match">
-            {row.fit}% · {matchRating(row.fit)}
-          </Fact>
-        )}
-        {row.interest != null && <Fact title="Interest">{row.interest}/5</Fact>}
-        {waiting != null &&
-          row.status !== "saved" &&
-          (row.appliedOn || row.heardBackOn) && (
-            <Fact title="Waiting">{waiting}d</Fact>
+          <dl className="facts">
+            {(row.salaryMin != null || row.salaryMax != null) && (
+              <Fact title="Salary">
+                {salaryRange(row.salaryMin, row.salaryMax)}
+              </Fact>
+            )}
+            {row.fit != null && (
+              <Fact title="Resume match">
+                {row.fit}% · {matchRating(row.fit)}
+              </Fact>
+            )}
+            {row.interest != null && (
+              <Fact title="Interest">{row.interest}/5</Fact>
+            )}
+            {waiting != null &&
+              row.status !== "saved" &&
+              (row.appliedOn || row.heardBackOn) && (
+                <Fact title="Waiting">{waiting}d</Fact>
+              )}
+            {row.appliedOn && (
+              <Fact title="Applied">{shortDate(row.appliedOn)}</Fact>
+            )}
+            {row.heardBackOn && (
+              <Fact title="Heard back">{shortDate(row.heardBackOn)}</Fact>
+            )}
+            {row.followUpOn && (
+              <Fact title="Follow up">{shortDate(row.followUpOn)}</Fact>
+            )}
+            {row.source && <Fact title="Source">{label(row.source)}</Fact>}
+          </dl>
+          {row.fitDetails && <MatchBreakdown details={row.fitDetails} />}
+
+          {(row.contactName || row.contactEmail) && (
+            <p className="summary-line">
+              <span>Contact</span>
+              {row.contactName}
+              {row.contactEmail && (
+                <a href={`mailto:${row.contactEmail}`}>{row.contactEmail}</a>
+              )}
+            </p>
           )}
-        {row.appliedOn && (
-          <Fact title="Applied">{shortDate(row.appliedOn)}</Fact>
-        )}
-        {row.heardBackOn && (
-          <Fact title="Heard back">{shortDate(row.heardBackOn)}</Fact>
-        )}
-        {row.followUpOn && (
-          <Fact title="Follow up">{shortDate(row.followUpOn)}</Fact>
-        )}
-        {row.source && <Fact title="Source">{label(row.source)}</Fact>}
-      </dl>
-      {row.fitDetails && (
-        <p className="text-xs text-muted-foreground tabular">
-          Skills {row.fitDetails.skills} · Experience{" "}
-          {row.fitDetails.experience} · Related work {row.fitDetails.domain} ·
-          Hard requirements met {row.fitDetails.meetsHardRequirements}%
-        </p>
-      )}
 
-      {(row.contactName || row.contactEmail) && (
-        <p className="summary-line">
-          <span>Contact</span>
-          {row.contactName}
-          {row.contactEmail && (
-            <a href={`mailto:${row.contactEmail}`}>{row.contactEmail}</a>
-          )}
-        </p>
-      )}
-
-      <BenefitsSummary row={row} />
+          <BenefitsSummary row={row} />
+        </TabsContent>
+        <TabsContent value="timeline" className="pt-3">
+          {timeline}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
