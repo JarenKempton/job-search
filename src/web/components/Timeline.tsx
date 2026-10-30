@@ -19,6 +19,28 @@ import { Input } from "@/web/components/ui/input";
 import { Textarea } from "@/web/components/ui/textarea";
 import { label } from "@/web/format";
 
+const LONG_NOTE = 240;
+
+function EventNote({ note }: { note: string }) {
+  const [open, setOpen] = useState(false);
+  const long = note.length > LONG_NOTE || note.split("\n").length > 3;
+  return (
+    <>
+      <p className={long && !open ? "line-clamp-3" : undefined}>{note}</p>
+      {long && (
+        <button
+          type="button"
+          className="mt-1 text-xs text-primary"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? "Show less" : "Show more"}
+        </button>
+      )}
+    </>
+  );
+}
+
 const LOGGABLE = EVENT_KINDS.filter((kind) => kind !== "status");
 const ICONS = {
   note: StickyNoteIcon,
@@ -165,7 +187,7 @@ export function Timeline({
                       {eventDate(event.occurredOn)}
                     </time>
                   </div>
-                  {event.note && <p>{event.note}</p>}
+                  {event.note && <EventNote note={event.note} />}
                 </div>
                 <Button
                   type="button"

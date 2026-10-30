@@ -304,7 +304,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "log_event",
     {
       description:
-        "Add a timeline entry: a reply, call, interview, take-home, follow-up sent, offer, or note. Pair with update_application when the status changes. For follow_up, put who was contacted and the message in note; the next follow-up reminder moves to 14 days after occurredOn.",
+        "Add a timeline entry: a reply, call, interview, take-home, follow-up sent, offer, or note. Pair with update_application when the status changes. For an email, put who it's from on the first line of note, then the email text without signatures, footers or quoted earlier messages. For follow_up, put who was contacted and the message in note; the next follow-up reminder moves to 14 days after occurredOn.",
       inputSchema: {
         id: z.string().uuid(),
         kind: z.enum(
@@ -314,7 +314,11 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
           ],
         ),
         occurredOn: day.optional().describe("Defaults to today"),
-        note: z.string().optional(),
+        note: z
+          .string()
+          .max(5_000)
+          .optional()
+          .describe("Details, or the message text for emails and follow-ups"),
       },
     },
     async ({ id, kind, occurredOn, note }) =>

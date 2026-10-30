@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/web/components/ui/card";
 
 const SYNC_PROMPT = `Every day at 8 AM, update my Job Search tracker:
 1. Search my Gmail, including archived mail, for application confirmations, recruiter replies, interview invitations, assessments, offers and rejections since the last run.
-2. Match each email to an application with list_applications. Update its status and dates with update_application, and log_event with the email's date and a one-line summary. Add an application only when none matches.
+2. Match each email to an application with list_applications. Update its status and dates with update_application, and log_event with the email's date. Use kind response for replies and rejections from people, and note for automatic confirmations. In note, put who it's from on the first line, then the email text without signatures, footers or quoted earlier messages. Add an application only when none matches.
 3. For new applications, read the job posting and record the salary, work mode and benefits it states. Leave anything unstated blank; never guess.
 4. If you can't verify a date, clear it with null.
 5. Reply with a short list of what changed.`;
