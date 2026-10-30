@@ -11,8 +11,13 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { EVENT_KINDS, type EventKind } from "@/applications/fields";
-import { localToday, type ApplicationEvent } from "@/web/api";
+import {
+  CHANNELS,
+  EVENT_KINDS,
+  type Channel,
+  type EventKind,
+} from "@/applications/fields";
+import { localToday, type ApplicationEvent, type NewEvent } from "@/web/api";
 import { Choice, Field } from "@/web/components/fields";
 import { Button } from "@/web/components/ui/button";
 import { Input } from "@/web/components/ui/input";
@@ -70,16 +75,13 @@ export function Timeline({
   events: ApplicationEvent[];
   applicationNote: string | null;
   onClearNote: () => Promise<void>;
-  onAdd: (input: {
-    kind: EventKind;
-    occurredOn: string;
-    note: string | null;
-  }) => Promise<void>;
+  onAdd: (input: NewEvent) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
 }) {
   const [kind, setKind] = useState<EventKind>("note");
   const [occurredOn, setOccurredOn] = useState(localToday);
   const [note, setNote] = useState("");
+  const [channel, setChannel] = useState<Channel | null>(null);
   const [draftNote, setDraftNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -95,8 +97,9 @@ export function Timeline({
     setBusy(true);
     setError(null);
     try {
-      await onAdd({ kind, occurredOn, note: note.trim() || null });
+      await onAdd({ kind, occurredOn, note: note.trim() || null, channel });
       setNote("");
+      setChannel(null);
       setExpanded(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -115,6 +118,7 @@ export function Timeline({
         kind: "note",
         occurredOn: localToday(),
         note: draftNote.trim(),
+        channel: null,
       });
       setDraftNote("");
     } catch (cause) {
@@ -182,7 +186,10 @@ export function Timeline({
                 </span>
                 <div className="event-body">
                   <div className="event-heading">
-                    <strong>{label(event.kind)}</strong>
+                    <strong>
+                      {label(event.kind)}
+                      {event.channel && ` · ${label(event.channel)}`}
+                    </strong>
                     <time dateTime={event.occurredOn}>
                       {eventDate(event.occurredOn)}
                     </time>
@@ -245,6 +252,14 @@ export function Timeline({
               required
               value={occurredOn}
               onChange={(event) => setOccurredOn(event.target.value)}
+            />
+          </Field>
+          <Field id="event-channel" title="How">
+            <Choice
+              id="event-channel"
+              value={channel}
+              options={CHANNELS}
+              onChange={setChannel}
             />
           </Field>
           <Field id="event-note" title="Details" className="span-2">

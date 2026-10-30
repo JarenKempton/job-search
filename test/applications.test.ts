@@ -95,7 +95,8 @@ describe("applications", () => {
       json: {
         kind: "follow_up",
         occurredOn: "2026-10-20",
-        note: "Emailed the recruiter",
+        note: "Messaged the recruiter",
+        channel: "linkedin",
       },
     });
     const detail = await data<Row & { events: Row[] }>(
@@ -107,7 +108,8 @@ describe("applications", () => {
     });
     expect(detail.events[0]).toMatchObject({
       kind: "follow_up",
-      note: "Emailed the recruiter",
+      note: "Messaged the recruiter",
+      channel: "linkedin",
     });
 
     await call(`/api/v1/applications/${created.id}`, {

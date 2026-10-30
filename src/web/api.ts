@@ -1,4 +1,4 @@
-import type { EventKind } from "@/applications/fields";
+import type { Channel, EventKind } from "@/applications/fields";
 import type { BenefitsPatch } from "@/applications/benefits";
 import type {
   Application as Row,
@@ -12,6 +12,12 @@ export type Application = Json<Row>;
 export type ApplicationEvent = Json<EventRow>;
 export type Resume = Json<ResumeRow>;
 export type ApplicationDetail = Application & { events: ApplicationEvent[] };
+export type NewEvent = {
+  kind: EventKind;
+  occurredOn: string;
+  note: string | null;
+  channel: Channel | null;
+};
 export type ApplicationInput = Omit<
   Application,
   "id" | "createdAt" | "updatedAt" | "fitDetails"
@@ -62,10 +68,7 @@ export const jobs = {
     ),
   remove: (id: string) =>
     api<{ id: string }>(`/api/v1/applications/${id}`, { method: "DELETE" }),
-  addEvent: (
-    id: string,
-    input: { kind: EventKind; occurredOn: string; note: string | null },
-  ) =>
+  addEvent: (id: string, input: NewEvent) =>
     api<ApplicationEvent>(
       `/api/v1/applications/${id}/events`,
       send("POST", input),

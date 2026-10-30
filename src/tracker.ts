@@ -253,6 +253,7 @@ export class Tracker extends DurableObject<Env> {
     const event = {
       ...input,
       note: input.note ?? null,
+      channel: input.channel ?? null,
       id: crypto.randomUUID(),
       applicationId,
       createdAt: new Date(),

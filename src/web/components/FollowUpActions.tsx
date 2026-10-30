@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from "react";
-import { localToday } from "@/web/api";
+import { CHANNELS, type Channel } from "@/applications/fields";
+import { localToday, type NewEvent } from "@/web/api";
+import { Choice } from "@/web/components/fields";
 import { Button } from "@/web/components/ui/button";
 import { Input } from "@/web/components/ui/input";
 import { Label } from "@/web/components/ui/label";
 import { Textarea } from "@/web/components/ui/textarea";
 
-export type FollowUp = { occurredOn: string; note: string | null };
+export type FollowUp = Omit<NewEvent, "kind">;
 
 export function FollowUpActions({
   onFollowedUp,
@@ -17,6 +19,7 @@ export function FollowUpActions({
   const [open, setOpen] = useState(false);
   const [occurredOn, setOccurredOn] = useState(localToday);
   const [note, setNote] = useState("");
+  const [channel, setChannel] = useState<Channel | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,9 +38,10 @@ export function FollowUpActions({
   const save = (event: FormEvent) => {
     event.preventDefault();
     return run(async () => {
-      await onFollowedUp({ occurredOn, note: note.trim() || null });
+      await onFollowedUp({ occurredOn, note: note.trim() || null, channel });
       setOpen(false);
       setNote("");
+      setChannel(null);
     });
   };
 
@@ -94,6 +98,15 @@ export function FollowUpActions({
             required
             value={occurredOn}
             onChange={(event) => setOccurredOn(event.target.value)}
+          />
+        </div>
+        <div className="grid min-w-36 gap-1.5">
+          <Label htmlFor="follow-up-channel">How</Label>
+          <Choice
+            id="follow-up-channel"
+            value={channel}
+            options={CHANNELS}
+            onChange={setChannel}
           />
         </div>
         <div className="ml-auto flex gap-2">

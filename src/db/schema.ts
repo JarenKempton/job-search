@@ -3,6 +3,7 @@ import type { Benefits } from "../applications/benefits";
 import type { JobMatch } from "../match";
 import type {
   ApplyMethod,
+  Channel,
   EmploymentType,
   EventKind,
   Requirement,
@@ -75,6 +76,7 @@ export const applicationEvents = sqliteTable(
     kind: text("kind").$type<EventKind>().notNull(),
     occurredOn: text("occurred_on").notNull(),
     note: text("note"),
+    channel: text("channel").$type<Channel>(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [

@@ -6,6 +6,7 @@ import {
 } from "../applications/benefits.ts";
 import {
   APPLY_METHODS,
+  CHANNELS,
   EMPLOYMENT_TYPES,
   EVENT_KINDS,
   REQUIREMENTS,
@@ -319,14 +320,19 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
           .max(5_000)
           .optional()
           .describe("Details, or the message text for emails and follow-ups"),
+        channel: z
+          .enum(CHANNELS)
+          .optional()
+          .describe("How the message was sent or received"),
       },
     },
-    async ({ id, kind, occurredOn, note }) =>
+    async ({ id, kind, occurredOn, note, channel }) =>
       reply(
         await call(`/api/v1/applications/${id}/events`, "POST", {
           kind,
           occurredOn: occurredOn ?? today(),
           note: note ?? null,
+          channel: channel ?? null,
         }),
       ),
   );
