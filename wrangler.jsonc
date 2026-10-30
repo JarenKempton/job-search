@@ -36,18 +36,6 @@
     { "tag": "v1", "new_sqlite_classes": ["Tracker"] },
     { "tag": "v2", "new_sqlite_classes": ["Directory"] },
   ],
-  "d1_databases": [
-    {
-      "binding": "JAREN_D1",
-      "database_name": "job-search",
-      "database_id": "2e7178b9-1f85-4d17-a47a-17e8374d5ecd",
-    },
-    {
-      "binding": "MAKAYLA_D1",
-      "database_name": "makayla-jobs",
-      "database_id": "c958083c-ed4d-4fb8-bacd-0994d7345ced",
-    },
-  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,

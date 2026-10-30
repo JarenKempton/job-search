@@ -59,11 +59,11 @@ describe("people", () => {
     for (const [method, path] of [
       ["GET", "/api/v1/people"],
       ["POST", "/api/v1/people"],
-      ["PATCH", "/api/v1/people/makayla%40example.test"],
-      ["DELETE", "/api/v1/people/makayla%40example.test"],
-      ["POST", "/api/v1/people/makayla%40example.test/invite"],
-      ["POST", "/api/v1/people/makayla%40example.test/reset"],
-      ["POST", "/api/v1/people/makayla%40example.test/extra"],
+      ["PATCH", "/api/v1/people/avery%40example.test"],
+      ["DELETE", "/api/v1/people/avery%40example.test"],
+      ["POST", "/api/v1/people/avery%40example.test/invite"],
+      ["POST", "/api/v1/people/avery%40example.test/reset"],
+      ["POST", "/api/v1/people/avery%40example.test/extra"],
       ["GET", "/api/v1/ai-usage"],
       ["PUT", "/api/v1/ai-usage"],
     ])
@@ -77,7 +77,7 @@ describe("people", () => {
   });
 
   it("records who has signed in", async () => {
-    await call("/api/v1/applications", {}, signedInAs("makayla@example.test"));
+    await call("/api/v1/applications", {}, signedInAs("avery@example.test"));
     const { configured, people } = await data<{
       configured: boolean;
       people: Person[];
@@ -85,7 +85,7 @@ describe("people", () => {
     expect(configured).toBe(false);
     expect(people).toContainEqual(
       expect.objectContaining({
-        email: "makayla@example.test",
+        email: "avery@example.test",
         member: false,
         lastSeen: new Date().toISOString().slice(0, 10),
       }),
@@ -93,7 +93,7 @@ describe("people", () => {
   });
 
   it("adds and removes emails in the Access group, keeping other rules", async () => {
-    const cloudflare = cloudflareGroup(["makayla@example.test"]);
+    const cloudflare = cloudflareGroup(["avery@example.test"]);
     const added = await data<{ people: Person[] }>(
       await asOwner("/api/v1/people", {
         method: "POST",
@@ -103,10 +103,10 @@ describe("people", () => {
     );
     expect(
       added.people.filter((person) => person.member).map((p) => p.email),
-    ).toEqual(["makayla@example.test", "new.friend@example.test"]);
+    ).toEqual(["avery@example.test", "new.friend@example.test"]);
     expect(cloudflare.group().include).toEqual([
       { email_domain: { domain: "example.org" } },
-      { email: { email: "makayla@example.test" } },
+      { email: { email: "avery@example.test" } },
       { email: { email: "new.friend@example.test" } },
     ]);
     const [url, init] = cloudflare.fetch.mock.calls[1];
@@ -116,7 +116,7 @@ describe("people", () => {
     );
 
     const removed = await data<{ signedOut: boolean }>(
-      await asOwner("/api/v1/people/makayla%40example.test", {
+      await asOwner("/api/v1/people/avery%40example.test", {
         method: "DELETE",
       }),
     );
@@ -124,7 +124,7 @@ describe("people", () => {
     const revoke = cloudflare.fetch.mock.calls.at(-1)!;
     expect(String(revoke[0])).toContain("/access/organizations/revoke_user");
     expect(JSON.parse(String(revoke[1]?.body))).toEqual({
-      email: "makayla@example.test",
+      email: "avery@example.test",
     });
     expect(cloudflare.group().include).toEqual([
       { email_domain: { domain: "example.org" } },
@@ -189,7 +189,7 @@ describe("people", () => {
     await asOwner("/api/v1/people", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "nick@example.test", name: "Nick Polk" }),
+      body: JSON.stringify({ email: "nick@example.test", name: "Nick Rivera" }),
     });
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({ text: expect.stringMatching(/^Hi Nick,/) }),

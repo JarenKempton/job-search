@@ -6,9 +6,6 @@ export interface Env {
   DIRECTORY: DurableObjectNamespace<Directory>;
   ASSETS: Fetcher;
   AI: Ai;
-  JAREN_D1?: D1Database;
-  MAKAYLA_D1?: D1Database;
-  LEGACY_OWNERS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
   ADMIN_EMAILS?: string;
