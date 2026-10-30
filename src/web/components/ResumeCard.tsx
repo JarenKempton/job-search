@@ -1,6 +1,7 @@
 import { FileTextIcon, UploadIcon } from "lucide-react";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { resume as api, type Resume } from "@/web/api";
+import { cn } from "cn";
 import { Button } from "@/web/components/ui/button";
 import {
   Card,
@@ -9,6 +10,8 @@ import {
   CardHeader,
 } from "@/web/components/ui/card";
 import { Textarea } from "@/web/components/ui/textarea";
+
+const ACCEPT = ".pdf,.txt,application/pdf,text/plain";
 
 const loadPdfReader = () => import("unpdf");
 
@@ -22,6 +25,43 @@ async function readText(file: File) {
 }
 
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+function UploadButton({
+  busy,
+  label,
+  variant,
+  onChange,
+}: {
+  busy: boolean;
+  label: string;
+  variant?: "outline";
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={variant}
+      asChild
+      className={cn(
+        "has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
+        busy && "pointer-events-none opacity-50",
+      )}
+    >
+      <label
+        aria-busy={busy}
+        onPointerDown={() => void loadPdfReader().catch(() => {})}
+      >
+        <input
+          type="file"
+          accept={ACCEPT}
+          className="sr-only"
+          onChange={onChange}
+        />
+        <UploadIcon /> {busy ? "Reading…" : label}
+      </label>
+    </Button>
+  );
+}
 
 export function ResumeCard() {
   const [saved, setSaved] = useState<Resume | null | undefined>(undefined);
@@ -50,17 +90,24 @@ export function ResumeCard() {
   }
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || busy) {
+      input.value = "";
+      return;
+    }
     void run(async () => {
-      const text = (await readText(file)).trim();
-      if (!text)
-        throw new Error(
-          "No text found in that file. Try another file or paste the text instead.",
-        );
-      setFileName(file.name);
-      setDraft(text);
+      try {
+        const text = (await readText(file)).trim();
+        if (!text)
+          throw new Error(
+            "No text found in that file. Try another file or paste the text instead.",
+          );
+        setFileName(file.name);
+        setDraft(text);
+      } finally {
+        input.value = "";
+      }
     });
   }
 
@@ -86,15 +133,6 @@ export function ResumeCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <input
-          id="resume-file"
-          type="file"
-          accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
-          className="sr-only"
-          aria-label="Resume file"
-          disabled={busy}
-          onChange={choose}
-        />
         {draft !== null ? (
           <>
             <Textarea
@@ -153,15 +191,12 @@ export function ResumeCard() {
             >
               Edit
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <label
-                htmlFor="resume-file"
-                aria-disabled={busy}
-                onPointerDown={loadPdfReader}
-              >
-                <UploadIcon /> {busy ? "Reading…" : "Replace"}
-              </label>
-            </Button>
+            <UploadButton
+              busy={busy}
+              label="Replace"
+              variant="outline"
+              onChange={choose}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -174,15 +209,11 @@ export function ResumeCard() {
           </div>
         ) : saved === null ? (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" asChild>
-              <label
-                htmlFor="resume-file"
-                aria-disabled={busy}
-                onPointerDown={loadPdfReader}
-              >
-                <UploadIcon /> {busy ? "Reading…" : "Upload PDF or text"}
-              </label>
-            </Button>
+            <UploadButton
+              busy={busy}
+              label="Upload PDF or text"
+              onChange={choose}
+            />
             <Button
               type="button"
               variant="outline"
