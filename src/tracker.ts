@@ -28,7 +28,12 @@ const RESUME = "current";
 const MATCH_SCORES = "matchScores";
 const SCORE_CACHE = "scoreCache";
 
-type MatchSettings = { enabled: boolean; day: string; used: number };
+type MatchSettings = {
+  enabled: boolean;
+  day: string;
+  used: number;
+  extra: number;
+};
 type JobToScore = {
   label: string;
   posting: string;
@@ -321,12 +326,28 @@ export class Tracker extends DurableObject<Env> {
   }
 
   matchScores() {
-    const { enabled, used } = this.matchSettings();
+    const { enabled, used, extra } = this.matchSettings();
     return {
       enabled,
       usedToday: used,
-      dailyLimit: DAILY_SCORES,
+      dailyLimit: DAILY_SCORES + extra,
     };
+  }
+
+  resetMatchScores() {
+    this.ctx.storage.kv.put(MATCH_SCORES, { ...this.matchSettings(), used: 0 });
+    this.changed();
+    return this.matchScores();
+  }
+
+  allowExtraScores(scores: number) {
+    const settings = this.matchSettings();
+    this.ctx.storage.kv.put(MATCH_SCORES, {
+      ...settings,
+      extra: settings.extra + scores,
+    });
+    this.changed();
+    return this.matchScores();
   }
 
   setMatchScores(enabled: boolean) {
@@ -360,12 +381,13 @@ export class Tracker extends DurableObject<Env> {
       (job) => !job.applicationId || this.application(job.applicationId),
     );
     const fresh = scorable.filter((job) => !known[keys[jobs.indexOf(job)]]);
-    const remaining = Math.max(0, DAILY_SCORES - settings.used);
+    const limit = DAILY_SCORES + settings.extra;
+    const remaining = Math.max(0, limit - settings.used);
     if (fresh.length && !remaining && fresh.length === scorable.length)
       return failure(
         429,
         "match_score_daily_limit",
-        `All ${DAILY_SCORES} of today's match scores are used; they reset at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank.`,
+        `All ${limit} of today's match scores are used; they reset at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank.`,
       );
     const toScore = fresh.slice(0, remaining);
     this.ctx.storage.kv.put(MATCH_SCORES, {
@@ -405,7 +427,7 @@ export class Tracker extends DurableObject<Env> {
       if (!match && !done)
         return {
           label,
-          error: `Not scored: today's ${DAILY_SCORES} match scores ran out. Don't estimate a match yourself; leave the resume match blank.`,
+          error: `Not scored: today's ${limit} match scores ran out. Don't estimate a match yourself; leave the resume match blank.`,
         };
       if (!match)
         return {
@@ -453,8 +475,8 @@ export class Tracker extends DurableObject<Env> {
     const saved = this.ctx.storage.kv.get<MatchSettings>(MATCH_SCORES);
     const enabled = saved?.enabled ?? true;
     return saved?.day === today
-      ? { enabled, day: today, used: saved.used }
-      : { enabled, day: today, used: 0 };
+      ? { enabled, day: today, used: saved.used, extra: saved.extra ?? 0 }
+      : { enabled, day: today, used: 0, extra: 0 };
   }
 
   private saveScore(id: string, scored: JobMatch, posting: string) {
