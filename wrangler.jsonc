@@ -18,10 +18,23 @@
     "run_worker_first": ["/api/*", "/mcp"],
   },
   "ai": { "binding": "AI" },
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "remote": true,
+      "allowed_sender_addresses": ["jobs@jarenkempton.dev"],
+    },
+  ],
   "durable_objects": {
-    "bindings": [{ "name": "TRACKER", "class_name": "Tracker" }],
+    "bindings": [
+      { "name": "TRACKER", "class_name": "Tracker" },
+      { "name": "DIRECTORY", "class_name": "Directory" },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Tracker"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Tracker"] },
+    { "tag": "v2", "new_sqlite_classes": ["Directory"] },
+  ],
   "d1_databases": [
     {
       "binding": "JAREN_D1",
@@ -50,5 +63,8 @@
   "vars": {
     "ACCESS_AUD": "ddc62324f80b4fde42600f5819fb6c463357a1267e6ee81a50e116d9d00070e4",
     "ACCESS_TEAM_DOMAIN": "https://jarenkempton.cloudflareaccess.com",
+    "ADMIN_EMAILS": "jaren.kempton@gmail.com",
+    "CLOUDFLARE_ACCOUNT_ID": "14724deda231baae703a1ef41a4ba29b",
+    "INVITE_FROM": "jobs@jarenkempton.dev",
   },
 }
