@@ -34,7 +34,7 @@ const PROMPTS = [
   },
 ];
 
-const CLIENTS = ["ChatGPT", "Claude", "Claude Code"] as const;
+const CLIENTS = ["ChatGPT", "Claude", "Grok", "Claude Code"] as const;
 type Client = (typeof CLIENTS)[number];
 
 const STEPS: Record<Exclude<Client, "Claude Code">, string[]> = {
@@ -45,6 +45,10 @@ const STEPS: Record<Exclude<Client, "Claude Code">, string[]> = {
   Claude: [
     "Settings → Connectors → Add custom connector",
     "Paste the URL → Connect → sign in",
+  ],
+  Grok: [
+    "grok.com/connectors → New Connector → Custom",
+    "Paste the URL → Add Connector → sign in",
   ],
 };
 
@@ -96,6 +100,7 @@ export function Connect() {
         </CardContent>
       </Card>
 
+      <h2 className="text-sm font-semibold">Prompts</h2>
       <Card>
         <CardContent className="divide-y">
           {PROMPTS.map((prompt) => (
