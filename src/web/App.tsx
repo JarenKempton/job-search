@@ -3,7 +3,7 @@ import {
   FileTextIcon,
   PlugIcon,
   PlusIcon,
-  UsersIcon,
+  ShieldIcon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,14 +21,14 @@ import { useOpenApplication, usePage, type Page } from "./router";
 import { useApplications } from "./use-applications";
 import { Applications } from "./views/Applications";
 import { Connect } from "./views/Connect";
-import { People } from "./views/People";
+import { Admin } from "./views/Admin";
 import { ResumePage } from "./views/ResumePage";
 
 const PAGES: { page: Page; label: string; Icon: typeof PlusIcon }[] = [
   { page: "applications", label: "Applications", Icon: BriefcaseIcon },
   { page: "resume", label: "Resume", Icon: FileTextIcon },
   { page: "connect", label: "Connect", Icon: PlugIcon },
-  { page: "people", label: "People", Icon: UsersIcon },
+  { page: "admin", label: "Admin", Icon: ShieldIcon },
 ];
 
 export function App() {
@@ -44,7 +44,7 @@ export function App() {
       .catch(() => setAdmin(false));
   }, []);
 
-  const pages = PAGES.filter((item) => admin || item.page !== "people");
+  const pages = PAGES.filter((item) => admin || item.page !== "admin");
 
   return (
     <div className="dark app">
@@ -108,8 +108,8 @@ export function App() {
         )}
         {page === "resume" ? (
           <ResumePage />
-        ) : page === "people" && admin ? (
-          <People />
+        ) : page === "admin" && admin ? (
+          <Admin />
         ) : page === "connect" ? (
           <Connect />
         ) : (
