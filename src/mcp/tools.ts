@@ -367,7 +367,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "score_jobs",
     {
       description:
-        "Score how well the applicant's saved resume matches up to 10 job postings at once, 0-100 each, using Cloudflare's Clef decision model. When looking for jobs, score every posting you find instead of filtering by your own judgment, then search for more jobs like the highest scorers using their titles and the skills that matched (the skills, experience and domain parts show why). Scoring doesn't add anything to the tracker; only add jobs the applicant picks. Pass applicationId to save a score as that application's resume match. Contact details are removed from the resume first. Scores are limited per day and the applicant can turn them off on the Resume page; the result says how many are used.",
+        "Score how well the applicant's saved resume matches up to 10 job postings at once, 0-100 each, using Cloudflare's Clef decision model. Each result has a rating: strong (60+), partial (40-59) or stretch (under 40), plus the skills, experience, domain and hard-requirements parts. When looking for jobs, score every posting you find instead of filtering by your own judgment, then search for more jobs like the highest scorers using their titles and the skills that matched (the skills, experience and domain parts show why). Scoring doesn't add anything to the tracker; only add jobs the applicant picks. Pass applicationId to save a score as that application's resume match. Contact details are removed from the resume first. Scores are limited per day and the applicant can turn them off on the Resume page; the result says how many are used.",
       annotations: { openWorldHint: true },
       inputSchema: {
         jobs: z
@@ -379,10 +379,10 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
                 .describe("Company and role, to match results to postings"),
               posting: z
                 .string()
-                .min(50)
+                .min(400)
                 .max(30_000)
                 .describe(
-                  "Job posting text: role, requirements, location. Leave out page navigation and unrelated text.",
+                  "The full job posting text as published, not a summary: role, responsibilities, requirements, location. Leave out page navigation and legal boilerplate. Saved as the application's description when applicationId is given.",
                 ),
               applicationId: z
                 .string()

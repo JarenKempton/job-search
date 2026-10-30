@@ -486,7 +486,10 @@ describe("structured benefits", () => {
 
 describe("benefits migration", () => {
   it("adds only a nullable structured column while preserving all nine legacy text fields", async () => {
-    await applyD1Migrations(env.JAREN_D1!, env.TEST_MIGRATIONS.slice(0, -1));
+    await applyD1Migrations(
+      env.JAREN_D1!,
+      env.TEST_MIGRATIONS.filter(({ name }) => name < "0002"),
+    );
     await env
       .JAREN_D1!.prepare(
         `INSERT INTO applications (id, company, role, pto, sick_leave, holidays, healthcare, retirement, parental_leave, other_benefits, benefits_notes, benefits_source, created_at, updated_at)
@@ -500,6 +503,6 @@ describe("benefits migration", () => {
     const after = await env
       .JAREN_D1!.prepare("SELECT * FROM applications WHERE id = 'old'")
       .first();
-    expect(after).toEqual({ ...before, benefits: null });
+    expect(after).toEqual({ ...before, benefits: null, fit_details: null });
   });
 });

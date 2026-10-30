@@ -8,8 +8,10 @@ alex.rivera@example.com · (512) 555-0142 · linkedin.com/in/alexrivera · https
 Product Engineer, 2019 - 2023 and 2023-2026
 Skills: TypeScript, React, Node.js, PostgreSQL`;
 
-const POSTING =
-  "Senior TypeScript engineer. Requires 5+ years with React and Node.js, PostgreSQL experience, remote in the US.";
+const POSTING = `Senior TypeScript Engineer (Remote, US)
+You'll build product features end to end in React and TypeScript, design Node.js services on PostgreSQL, and work closely with design and support to ship small releases every week.
+Requirements: 5+ years of professional software engineering; strong React, TypeScript and Node.js; production PostgreSQL experience; comfort owning features from database to UI.
+Nice to have: experience building AI tooling, MCP servers or developer platforms.`;
 
 const ANSWERS = {
   model: "clef",
@@ -107,7 +109,7 @@ describe("match scores", () => {
     expect(redact(input)).toBe(expected);
   });
 
-  it("weights the parts in code and halves the match when hard requirements fail", () => {
+  it("weights the parts in code and takes off at most a quarter when hard requirements fail", () => {
     const met = combine(ANSWERS as never);
     expect(met).toMatchObject({
       skills: 100,
@@ -123,7 +125,9 @@ describe("match scores", () => {
       ...ANSWERS,
       answers: { ...ANSWERS.answers, hard_requirements: { noul: 0 } },
     } as never);
-    expect(missed.match).toBe(Math.round(met.match / 2));
+    expect(missed.match).toBe(
+      Math.round(100 * (0.45 + 0.3 * (2 / 3) + 0.25 * 0.5) * 0.75),
+    );
   });
 
   it("is on by default, needs a resume, and refuses once turned off", async () => {
@@ -241,6 +245,62 @@ describe("match scores", () => {
       (await data<{ fit: number }>(await call(`/api/v1/applications/${id}`)))
         .fit,
     ).toBe(40);
+  });
+
+  it("rates scores and rejects a summary instead of the full posting", async () => {
+    await answers();
+    await turnOn();
+    const { results } = await data<
+      Scored & { results: Array<{ rating: string }> }
+    >(await score());
+    expect(results[0].rating).toBe("strong");
+    expect(
+      (
+        await score([
+          { posting: "Short summary of a TypeScript role. ".repeat(3) },
+        ])
+      ).status,
+    ).toBe(422);
+  });
+
+  it("re-scores the same posting for free and saves the score, breakdown and posting", async () => {
+    const clef = await answers();
+    await turnOn();
+    const first = await data<Scored>(await score());
+    const { id } = await data<{ id: string }>(
+      await call("/api/v1/applications", {
+        method: "POST",
+        json: {
+          company: "Acme",
+          role: "Engineer",
+          status: "saved",
+          requirements: [],
+          description: "Short summary.",
+        },
+      }),
+    );
+    const second = await data<Scored>(await score([{ applicationId: id }]));
+    expect(clef).toHaveBeenCalledTimes(1);
+    expect(second.usedToday).toBe(first.usedToday);
+    const saved = await data<{
+      fit: number;
+      fitDetails: { skills: number; scoredAt: string } | null;
+      description: string;
+    }>(await call(`/api/v1/applications/${id}`));
+    expect(saved.fit).toBe(first.results[0].match);
+    expect(saved.fitDetails).toMatchObject({ skills: 100 });
+    expect(saved.description).toBe(POSTING);
+    await call(`/api/v1/applications/${id}`, {
+      method: "PATCH",
+      json: { fit: 30 },
+    });
+    expect(
+      (
+        await data<{ fitDetails: unknown }>(
+          await call(`/api/v1/applications/${id}`),
+        )
+      ).fitDetails,
+    ).toBeNull();
   });
 
   it("tells the AI when the shared free allowance is used up, and doesn't count it", async () => {

@@ -102,10 +102,8 @@ export const applicationRoutes = new Hono<AppEnv>()
     return ok(await context.var.tracker.setMatchScores(enabled));
   })
   .post("/api/v1/match-scores", async (context) => {
-    const { jobs, today = utcToday() } = scoreJobsSchema.parse(
-      await readJson(context.req.raw),
-    );
-    return ok(orFail(await context.var.tracker.scoreJobs(jobs, today)));
+    const { jobs } = scoreJobsSchema.parse(await readJson(context.req.raw));
+    return ok(orFail(await context.var.tracker.scoreJobs(jobs)));
   })
   .get("/api/v1/live", (context) => {
     if (context.req.header("upgrade")?.toLowerCase() !== "websocket")

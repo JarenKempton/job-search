@@ -178,3 +178,8 @@ export const BENEFIT_FIELDS = [
     hint: "Posting URL, benefits document, or recruiter and date",
   },
 ] as const;
+
+export type MatchRating = "strong" | "partial" | "stretch";
+
+export const matchRating = (fit: number): MatchRating =>
+  fit >= 60 ? "strong" : fit >= 40 ? "partial" : "stretch";
