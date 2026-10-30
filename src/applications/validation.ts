@@ -45,6 +45,7 @@ export const applicationFields = {
   appliedOn: optional(day),
   heardBackOn: optional(day),
   followUpOn: optional(day),
+  skipFollowUp: z.boolean().optional(),
   contactName: text(200),
   contactEmail: optional(z.email().max(320)),
   description: text(50_000),

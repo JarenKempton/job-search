@@ -153,6 +153,17 @@ export function ApplicationSheet({
               <ApplicationSummary
                 row={detail}
                 onEdit={() => setEditing(true)}
+                onFollowedUp={async (followUp) => {
+                  await jobs.addEvent(id, { kind: "follow_up", ...followUp });
+                  setForm(toForm(await reload()));
+                }}
+                onSkipFollowUp={async () => {
+                  await jobs.update(id, {
+                    skipFollowUp: true,
+                    followUpOn: null,
+                  });
+                  setForm(toForm(await reload()));
+                }}
                 timeline={
                   <Timeline
                     events={detail.events}

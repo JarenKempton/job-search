@@ -5,7 +5,8 @@ import {
 } from "@/applications/fields";
 import type { Application } from "./api";
 import { daysBetween } from "./format";
-import { needsFollowUp, STALE_AFTER_DAYS } from "./stats";
+import { addDays, FOLLOW_UP_AFTER_DAYS } from "@/applications/status";
+import { needsFollowUp } from "./stats";
 
 export const STAGES = [
   { key: "saved", title: "Saved", statuses: ["saved"] },
@@ -32,12 +33,6 @@ export const stageOf = (status: Status): Stage =>
     (stage.statuses as readonly Status[]).includes(status),
   )!;
 
-export function addDays(day: string, days: number): string {
-  return new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
-}
-
 export function daysWaiting(row: Application, today: string): number | null {
   if (CLOSED_STATUSES.includes(row.status)) return null;
   const since = row.heardBackOn ?? row.appliedOn ?? row.createdAt.slice(0, 10);
@@ -56,10 +51,12 @@ export function nextAction(row: Application, today: string): NextAction | null {
   if (CLOSED_STATUSES.includes(row.status)) return null;
   const due = needsFollowUp(row, today);
   if (row.followUpOn) return { text: "Follow up", on: row.followUpOn, due };
+  if (row.skipFollowUp && row.status === "applied")
+    return { text: "Wait for a reply", on: null, due: false };
   if (due)
     return {
       text: "Follow up",
-      on: row.appliedOn ? addDays(row.appliedOn, STALE_AFTER_DAYS) : null,
+      on: row.appliedOn ? addDays(row.appliedOn, FOLLOW_UP_AFTER_DAYS) : null,
       due: true,
     };
   switch (row.status) {
@@ -69,7 +66,7 @@ export function nextAction(row: Application, today: string): NextAction | null {
       return row.appliedOn
         ? {
             text: "Follow up",
-            on: addDays(row.appliedOn, STALE_AFTER_DAYS),
+            on: addDays(row.appliedOn, FOLLOW_UP_AFTER_DAYS),
             due: false,
           }
         : { text: "Wait for a reply", on: null, due: false };

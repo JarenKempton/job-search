@@ -503,6 +503,11 @@ describe("benefits migration", () => {
     const after = await env
       .JAREN_D1!.prepare("SELECT * FROM applications WHERE id = 'old'")
       .first();
-    expect(after).toEqual({ ...before, benefits: null, fit_details: null });
+    expect(after).toEqual({
+      ...before,
+      benefits: null,
+      fit_details: null,
+      skip_follow_up: 0,
+    });
   });
 });

@@ -3,7 +3,7 @@ import {
   DownloadIcon,
   SearchIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { jobs, localToday, type Application } from "@/web/api";
 import { byUrgency, stageOf, STAGES, type StageKey } from "@/web/board";
 import { ApplicationRow } from "@/web/components/ApplicationRow";
@@ -43,6 +43,28 @@ const SORTS: Record<
   interest: (a, b) => (b.interest ?? 0) - (a.interest ?? 0),
 };
 
+function useSaved<T extends string | null>(
+  key: string,
+  fallback: T,
+  allowed: readonly T[],
+) {
+  const [value, setValue] = useState<T>(() => {
+    const saved = localStorage.getItem(key);
+    return allowed.find((option) => option === saved) ?? fallback;
+  });
+  useEffect(() => {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  }, [key, value]);
+  return [value, setValue] as const;
+}
+
+const SORT_KEYS: Sort[] = ["next", ...(Object.keys(SORTS) as Sort[])];
+const STAGE_KEYS: (StageKey | null)[] = [
+  null,
+  ...STAGES.map((entry) => entry.key),
+];
+
 export function Applications({
   data,
   onOpen,
@@ -55,8 +77,12 @@ export function Applications({
   onGo: (page: "resume" | "connect") => void;
 }) {
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState<StageKey | null>(null);
-  const [sort, setSort] = useState<Sort>("next");
+  const [stage, setStage] = useSaved("applications.stage", null, STAGE_KEYS);
+  const [sort, setSort] = useSaved<Sort>(
+    "applications.sort",
+    "next",
+    SORT_KEYS,
+  );
   const today = localToday();
   const stats = useMemo(
     () => summarize(data.applications, today),

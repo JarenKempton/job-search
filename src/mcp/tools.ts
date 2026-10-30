@@ -83,6 +83,12 @@ const fields = {
   appliedOn: day.optional(),
   heardBackOn: day.optional(),
   followUpOn: day.optional(),
+  skipFollowUp: z
+    .boolean()
+    .optional()
+    .describe(
+      "True when the applicant doesn't plan to follow up, which stops follow-up reminders. Setting followUpOn turns reminders back on.",
+    ),
   contactName: z.string().optional(),
   contactEmail: z.string().email().optional(),
   description: z.string().optional().describe("Full job description text"),
@@ -298,7 +304,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "log_event",
     {
       description:
-        "Add a timeline entry: a reply, call, interview, take-home, follow-up sent, offer, or note. Pair with update_application when the status changes.",
+        "Add a timeline entry: a reply, call, interview, take-home, follow-up sent, offer, or note. Pair with update_application when the status changes. For follow_up, put who was contacted and the message in note; the next follow-up reminder moves to 14 days after occurredOn.",
       inputSchema: {
         id: z.string().uuid(),
         kind: z.enum(

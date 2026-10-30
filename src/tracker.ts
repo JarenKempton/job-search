@@ -4,7 +4,13 @@ import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 import migrations from "../drizzle/migrations.js";
 import { mergeBenefits } from "./applications/benefits";
 import { matchRating, type Status } from "./applications/fields";
-import { datesForStatus, statusNote, utcToday } from "./applications/status";
+import {
+  addDays,
+  datesForStatus,
+  FOLLOW_UP_AFTER_DAYS,
+  statusNote,
+  utcToday,
+} from "./applications/status";
 import type {
   CreateApplicationInput,
   CreateEventInput,
@@ -215,6 +221,9 @@ export class Tracker extends DurableObject<Env> {
         .set({
           ...changes,
           ...(changes.fit !== undefined ? { fitDetails: null } : {}),
+          ...(changes.followUpOn && changes.skipFollowUp === undefined
+            ? { skipFollowUp: false }
+            : {}),
           benefits: merged.data,
           ...dates,
           updatedAt: new Date(),
@@ -251,7 +260,15 @@ export class Tracker extends DurableObject<Env> {
     this.db.transaction((tx) => {
       tx.insert(applicationEvents).values(event).run();
       tx.update(applications)
-        .set({ updatedAt: new Date() })
+        .set({
+          ...(input.kind === "follow_up"
+            ? {
+                followUpOn: addDays(input.occurredOn, FOLLOW_UP_AFTER_DAYS),
+                skipFollowUp: false,
+              }
+            : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(applications.id, applicationId))
         .run();
     });

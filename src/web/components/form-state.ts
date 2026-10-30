@@ -43,6 +43,7 @@ export const EMPTY: FormState = {
   appliedOn: null,
   heardBackOn: null,
   followUpOn: null,
+  skipFollowUp: false,
   contactName: null,
   contactEmail: null,
   description: null,

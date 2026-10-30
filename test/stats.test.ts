@@ -38,6 +38,16 @@ describe("stats", () => {
     );
   });
 
+  it("stops suggesting a follow-up once skipped", () => {
+    const skipped = row({ skipFollowUp: true });
+    expect(needsFollowUp(skipped, "2026-11-01")).toBe(false);
+    expect(nextAction(skipped, "2026-11-01")).toEqual({
+      text: "Wait for a reply",
+      on: null,
+      due: false,
+    });
+  });
+
   it("computes response and rejection rates over applied jobs", () => {
     const stats = summarize(
       [

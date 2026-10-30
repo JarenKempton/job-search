@@ -1,0 +1,1 @@
+ALTER TABLE `applications` ADD `skip_follow_up` integer DEFAULT false NOT NULL;

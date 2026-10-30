@@ -39,6 +39,9 @@ export const applications = sqliteTable(
     appliedOn: text("applied_on"),
     heardBackOn: text("heard_back_on"),
     followUpOn: text("follow_up_on"),
+    skipFollowUp: integer("skip_follow_up", { mode: "boolean" })
+      .notNull()
+      .default(false),
     contactName: text("contact_name"),
     contactEmail: text("contact_email"),
     description: text("description"),

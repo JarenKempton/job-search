@@ -1,8 +1,7 @@
 import { CLOSED_STATUSES, RESPONDED_STATUSES } from "@/applications/fields";
 import type { Application } from "./api";
+import { FOLLOW_UP_AFTER_DAYS } from "@/applications/status";
 import { daysBetween } from "./format";
-
-export const STALE_AFTER_DAYS = 14;
 
 const responded = (row: Application) =>
   row.heardBackOn != null || RESPONDED_STATUSES.includes(row.status);
@@ -13,9 +12,10 @@ export function needsFollowUp(row: Application, today: string): boolean {
   if (row.followUpOn) return row.followUpOn <= today;
   return (
     row.status === "applied" &&
+    !row.skipFollowUp &&
     !row.heardBackOn &&
     row.appliedOn != null &&
-    daysBetween(row.appliedOn, today) >= STALE_AFTER_DAYS
+    daysBetween(row.appliedOn, today) >= FOLLOW_UP_AFTER_DAYS
   );
 }
 
