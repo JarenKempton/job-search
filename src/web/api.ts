@@ -83,7 +83,6 @@ export const resume = {
 };
 
 export type JevStatus = {
-  available: boolean;
   enabled: boolean;
   usedToday: number;
   dailyLimit: number;

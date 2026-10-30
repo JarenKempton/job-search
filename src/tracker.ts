@@ -260,7 +260,6 @@ export class Tracker extends DurableObject<Env> {
   jev() {
     const { enabled, used } = this.jevSettings();
     return {
-      available: this.jevAllowed(),
       enabled,
       usedToday: used,
       dailyLimit: JEV_DAILY_LIMIT,
@@ -268,12 +267,6 @@ export class Tracker extends DurableObject<Env> {
   }
 
   setJev(enabled: boolean) {
-    if (enabled && !this.jevAllowed())
-      return failure(
-        403,
-        "jev_unavailable",
-        "Match scores aren't available for this account yet.",
-      );
     this.ctx.storage.kv.put(JEV, { ...this.jevSettings(), enabled });
     this.changed();
     return this.jev();
@@ -281,18 +274,18 @@ export class Tracker extends DurableObject<Env> {
 
   async scoreJob(posting: string, applicationId: string | null, today: string) {
     const settings = this.jevSettings();
-    if (!this.jevAllowed() || !settings.enabled)
+    if (!settings.enabled)
       return failure(
         403,
         "jev_off",
-        "Match scores are off. The applicant can turn them on from the Resume page.",
+        "Match scores are turned off for this person. Don't call score_job again in this conversation; tell them they can turn on match scores on the Resume page. Don't estimate a match yourself; leave the resume match blank.",
       );
     const resume = this.resume();
     if (!resume)
       return failure(
         409,
         "no_resume",
-        "Save a resume on the Resume page first.",
+        "No resume is saved. Ask the person to add one on the Resume page, or call save_resume with resume text they give you, then try again.",
       );
     if (applicationId && !this.application(applicationId))
       return failure(404, "application_not_found", "Application not found.");
@@ -300,7 +293,7 @@ export class Tracker extends DurableObject<Env> {
       return failure(
         429,
         "jev_daily_limit",
-        `All ${JEV_DAILY_LIMIT} match scores for today are used. They reset at midnight UTC.`,
+        `All ${JEV_DAILY_LIMIT} of today's match scores are used; they reset at midnight UTC. Don't call score_job again today. Don't estimate a match yourself; leave the resume match blank.`,
       );
     this.ctx.storage.kv.put(JEV, { ...settings, used: settings.used + 1 });
     const result = await askJev(
@@ -312,8 +305,16 @@ export class Tracker extends DurableObject<Env> {
       const now = this.jevSettings();
       this.ctx.storage.kv.put(JEV, { ...now, used: Math.max(0, now.used - 1) });
       return result.error === "busy"
-        ? failure(503, "jev_busy", "TypeSafe is busy. Try again in a minute.")
-        : failure(502, "jev_failed", "TypeSafe couldn't score this posting.");
+        ? failure(
+            503,
+            "jev_busy",
+            "TypeSafe is busy. Wait about a minute, then try once more. If it's still busy, stop and try again later.",
+          )
+        : failure(
+            502,
+            "jev_failed",
+            "TypeSafe couldn't score this posting. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
+          );
     }
     if (applicationId)
       this.update(applicationId, { fit: result.match.match }, today);
@@ -337,17 +338,10 @@ export class Tracker extends DurableObject<Env> {
       .get();
   }
 
-  private jevAllowed() {
-    return (this.env.JEV_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .includes(this.ctx.id.name ?? "");
-  }
-
   private jevSettings(): JevSettings {
     const today = utcToday();
     const saved = this.ctx.storage.kv.get<JevSettings>(JEV);
-    const enabled = saved?.enabled ?? false;
+    const enabled = saved?.enabled ?? true;
     return saved?.day === today
       ? { enabled, day: today, used: saved.used }
       : { enabled, day: today, used: 0 };

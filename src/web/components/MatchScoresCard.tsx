@@ -15,7 +15,7 @@ export function MatchScoresCard() {
       .catch((cause: Error) => setError(cause.message));
   }, []);
 
-  if (!status?.available) return null;
+  if (!status) return null;
 
   async function toggle(enabled: boolean) {
     setError(null);

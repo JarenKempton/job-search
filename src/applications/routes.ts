@@ -97,7 +97,7 @@ export const applicationRoutes = new Hono<AppEnv>()
     const { enabled } = jevSettingsSchema.parse(
       await readJson(context.req.raw),
     );
-    return ok(orFail(await context.var.tracker.setJev(enabled)));
+    return ok(await context.var.tracker.setJev(enabled));
   })
   .post("/api/v1/jev/score", async (context) => {
     const {

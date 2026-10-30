@@ -1,7 +1,7 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { combine, JEV_MODEL, redact } from "../src/jev";
-import { call, data, rpc, signedInAs } from "./helpers";
+import { call, data, rpc } from "./helpers";
 
 const RESUME = `Alex Rivera
 alex.rivera@example.com · (512) 555-0142 · linkedin.com/in/alexrivera · https://alex.dev
@@ -72,17 +72,16 @@ describe("Jev match scores", () => {
     expect(missed.match).toBe(Math.round(met.match / 2));
   });
 
-  it("is off until the person turns it on, and needs a resume", async () => {
+  it("is on by default, needs a resume, and refuses once turned off", async () => {
     const jev = jevReturns(200);
     expect(await data(await call("/api/v1/jev"))).toEqual({
-      available: true,
-      enabled: false,
+      enabled: true,
       usedToday: 0,
       dailyLimit: 50,
     });
-    expect((await score({ posting: POSTING })).status).toBe(403);
-    await call("/api/v1/jev", { method: "PUT", json: { enabled: true } });
     expect((await score({ posting: POSTING })).status).toBe(409);
+    await call("/api/v1/jev", { method: "PUT", json: { enabled: false } });
+    expect((await score({ posting: POSTING })).status).toBe(403);
     expect(jev).not.toHaveBeenCalled();
   });
 
@@ -123,17 +122,6 @@ describe("Jev match scores", () => {
     ).toBe(result.match);
   });
 
-  it("refuses people who aren't on the list", async () => {
-    const outsider = signedInAs("friend@example.test");
-    const jev = jevReturns(200);
-    expect(await data(await call("/api/v1/jev", {}, outsider))).toMatchObject({
-      available: false,
-    });
-    expect((await turnOn(outsider)).status).toBe(403);
-    expect((await score({ posting: POSTING }, outsider)).status).toBe(403);
-    expect(jev).not.toHaveBeenCalled();
-  });
-
   it("stops at the daily limit without calling TypeSafe", async () => {
     const jev = jevReturns(200);
     await turnOn();
@@ -154,6 +142,20 @@ describe("Jev match scores", () => {
     expect(await data(await call("/api/v1/jev"))).toMatchObject({
       usedToday: 0,
     });
+  });
+
+  it("tells the AI what to do when scores are off, instead of a bare failure", async () => {
+    const jev = jevReturns(200);
+    await turnOn();
+    await call("/api/v1/jev", { method: "PUT", json: { enabled: false } });
+    const result = (await rpc("tools/call", {
+      name: "score_job",
+      arguments: { posting: POSTING },
+    })) as { isError: boolean; content: Array<{ text: string }> };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/Don't call score_job again/);
+    expect(result.content[0].text).toMatch(/Don't estimate a match yourself/);
+    expect(jev).not.toHaveBeenCalled();
   });
 
   it("scores through the MCP tool", async () => {
