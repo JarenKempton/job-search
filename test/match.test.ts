@@ -108,7 +108,7 @@ describe("match scores", () => {
     expect(await data(await call("/api/v1/match-scores/settings"))).toEqual({
       enabled: true,
       usedToday: 0,
-      dailyLimit: 25,
+      dailyLimit: 60,
     });
     expect((await score()).status).toBe(409);
     await call("/api/v1/match-scores/settings", {
@@ -134,7 +134,7 @@ describe("match scores", () => {
       }),
     );
     const result = await data<Scored>(await score([{ applicationId: id }]));
-    expect(result).toMatchObject({ usedToday: 1, dailyLimit: 25 });
+    expect(result).toMatchObject({ usedToday: 1, dailyLimit: 60 });
     const [model, input] = clef.mock.calls[0] as unknown as [
       string,
       { model: string; state: { resume: string; job_posting: string } },
@@ -154,7 +154,7 @@ describe("match scores", () => {
     await turnOn();
     await runInDurableObject(tracker(), (_, state) => {
       const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
-      state.storage.kv.put("matchScores", { ...saved, used: 25 });
+      state.storage.kv.put("matchScores", { ...saved, used: 60 });
     });
     const limited = await score([{}], "2001-01-01");
     expect(limited.status).toBe(429);
@@ -166,7 +166,7 @@ describe("match scores", () => {
     await turnOn();
     await runInDurableObject(tracker(), (_, state) => {
       const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
-      state.storage.kv.put("matchScores", { ...saved, used: 23 });
+      state.storage.kv.put("matchScores", { ...saved, used: 58 });
     });
     const { results, usedToday } = await data<Scored>(
       await score([
@@ -177,7 +177,7 @@ describe("match scores", () => {
       ]),
     );
     expect(clef).toHaveBeenCalledTimes(2);
-    expect(usedToday).toBe(25);
+    expect(usedToday).toBe(60);
     expect(results.map((result) => result.label)).toEqual([
       "Job 1",
       "Job 2",
