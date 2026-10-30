@@ -1,4 +1,5 @@
 export const DAILY_SCORES = 100;
+export const MATCH_GATEWAY = "job-search";
 export const MATCH_MODEL = "@cf/cloudflare/clef";
 
 const LEVELS = {
@@ -201,13 +202,14 @@ export async function askClef(
     const response = (await ai.run(
       MATCH_MODEL as never,
       matchRequest(resume, posting, requirements) as never,
+      { gateway: { id: MATCH_GATEWAY } },
     )) as unknown as ClefResponse;
     return { match: combine(response, requirements) };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(JSON.stringify({ clefError: message.slice(0, 200) }));
     return {
-      error: /4006|neurons/i.test(message)
+      error: /4006|2045|neurons|spend limit/i.test(message)
         ? ("allowance" as const)
         : ("failed" as const),
     };

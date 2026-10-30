@@ -1,6 +1,12 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { combine, DAILY_SCORES, MATCH_MODEL, redact } from "../src/match";
+import {
+  combine,
+  DAILY_SCORES,
+  MATCH_GATEWAY,
+  MATCH_MODEL,
+  redact,
+} from "../src/match";
 import { call, data, rpc } from "./helpers";
 
 const RESUME = `Alex Rivera
@@ -188,11 +194,13 @@ describe("match scores", () => {
     );
     const result = await data<Scored>(await score([{ applicationId: id }]));
     expect(result).toMatchObject({ usedToday: 1, dailyLimit: DAILY_SCORES });
-    const [model, input] = clef.mock.calls[0] as unknown as [
+    const [model, input, options] = clef.mock.calls[0] as unknown as [
       string,
       { model: string; state: { resume: string; job_posting: string } },
+      { gateway: { id: string } },
     ];
     expect(model).toBe(MATCH_MODEL);
+    expect(options).toEqual({ gateway: { id: MATCH_GATEWAY } });
     expect(input.model).toBe("clef");
     expect(input.state.job_posting).toBe(POSTING);
     expect(input.state.resume).not.toMatch(/example\.com|555/);
@@ -368,6 +376,20 @@ describe("match scores", () => {
     ).toMatchObject({
       usedToday: 0,
     });
+  });
+
+  it("treats the gateway's daily spend limit like a used-up allowance", async () => {
+    await clefReturns(() => {
+      throw new Error(
+        "2045: Spend limit exceeded: rule 'e51a498b' (cost limit 1 per 86400s, fixed) for internal-workers-ai @cf/cloudflare/clef",
+      );
+    });
+    await turnOn();
+    const { results } = await data<Scored>(await score());
+    expect(results[0].error).toMatch(/shared allowance/);
+    expect(
+      await data(await call("/api/v1/match-scores/settings")),
+    ).toMatchObject({ usedToday: 0 });
   });
 
   it("tells the AI what to do when scores are off, instead of a bare failure", async () => {
