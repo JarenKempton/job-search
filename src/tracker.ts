@@ -22,6 +22,11 @@ const RESUME = "current";
 const MATCH_SCORES = "matchScores";
 
 type MatchSettings = { enabled: boolean; day: string; used: number };
+type JobToScore = {
+  label: string;
+  posting: string;
+  applicationId?: string | null;
+};
 
 const failure = (status: number, code: string, message: string) => ({
   failure: { status, code, message },
@@ -272,13 +277,13 @@ export class Tracker extends DurableObject<Env> {
     return this.matchScores();
   }
 
-  async scoreJob(posting: string, applicationId: string | null, today: string) {
+  async scoreJobs(jobs: JobToScore[], today: string) {
     const settings = this.matchSettings();
     if (!settings.enabled)
       return failure(
         403,
         "match_scores_off",
-        "Match scores are turned off for this person. Don't call score_job again in this conversation; tell them they can turn on match scores on the Resume page. Don't estimate a match yourself; leave the resume match blank.",
+        "Match scores are turned off for this person. Don't call score_jobs again in this conversation; tell them they can turn on match scores on the Resume page. Don't estimate a match yourself; leave the resume match blank.",
       );
     const resume = this.resume();
     if (!resume)
@@ -287,41 +292,63 @@ export class Tracker extends DurableObject<Env> {
         "no_resume",
         "No resume is saved. Ask the person to add one on the Resume page, or call save_resume with resume text they give you, then try again.",
       );
-    if (applicationId && !this.application(applicationId))
-      return failure(404, "application_not_found", "Application not found.");
-    if (settings.used >= DAILY_SCORES)
+    const remaining = DAILY_SCORES - settings.used;
+    if (remaining <= 0)
       return failure(
         429,
         "match_score_daily_limit",
-        `All ${DAILY_SCORES} of today's match scores are used; they reset at midnight UTC. Don't call score_job again today. Don't estimate a match yourself; leave the resume match blank.`,
+        `All ${DAILY_SCORES} of today's match scores are used; they reset at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank.`,
       );
+    const scorable = jobs.filter(
+      (job) => !job.applicationId || this.application(job.applicationId),
+    );
+    const toScore = scorable.slice(0, remaining);
     this.ctx.storage.kv.put(MATCH_SCORES, {
       ...settings,
-      used: settings.used + 1,
+      used: settings.used + toScore.length,
     });
-    const result = await askClef(this.env.AI, resume.text, posting);
-    if ("error" in result) {
+    const scored = await Promise.all(
+      toScore.map(async (job) => ({
+        job,
+        result: await askClef(this.env.AI, resume.text, job.posting),
+      })),
+    );
+    const failed = scored.filter(({ result }) => "error" in result).length;
+    if (failed) {
       const now = this.matchSettings();
       this.ctx.storage.kv.put(MATCH_SCORES, {
         ...now,
-        used: Math.max(0, now.used - 1),
+        used: Math.max(0, now.used - failed),
       });
-      return result.error === "allowance"
-        ? failure(
-            503,
-            "match_score_allowance",
-            "Today's shared allowance for match scores is used up; it resets at midnight UTC. Don't call score_job again today. Don't estimate a match yourself; leave the resume match blank.",
-          )
-        : failure(
-            502,
-            "match_score_failed",
-            "This posting couldn't be scored. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
-          );
     }
-    if (applicationId)
-      this.update(applicationId, { fit: result.match.match }, today);
-    else this.changed();
-    return { ...result.match, ...this.matchScores() };
+    const results = jobs.map((job) => {
+      const label = job.label;
+      if (!scorable.includes(job))
+        return { label, error: "Application not found. Check the id." };
+      const done = scored.find((entry) => entry.job === job);
+      if (!done)
+        return {
+          label,
+          error: `Not scored: today's ${DAILY_SCORES} match scores ran out. Don't estimate a match yourself; leave the resume match blank.`,
+        };
+      if ("error" in done.result)
+        return {
+          label,
+          error:
+            done.result.error === "allowance"
+              ? "Not scored: today's shared allowance for match scores is used up; it resets at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank."
+              : "This posting couldn't be scored. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
+        };
+      if (job.applicationId)
+        this.update(job.applicationId, { fit: done.result.match.match }, today);
+      return {
+        label,
+        applicationId: job.applicationId ?? null,
+        ...done.result.match,
+      };
+    });
+    this.changed();
+    return { results, ...this.matchScores() };
   }
 
   fetch() {

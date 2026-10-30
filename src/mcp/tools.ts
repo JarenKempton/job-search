@@ -71,7 +71,7 @@ const fields = {
     .max(100)
     .optional()
     .describe(
-      "How well the applicant matches the posting, 0-100. Prefer score_job, which sets this from a decision model; never estimate it yourself.",
+      "How well the applicant matches the posting, 0-100. Prefer score_jobs, which sets this from a decision model; never estimate it yourself.",
     ),
   interest: z.number().int().min(1).max(5).optional(),
   status: z
@@ -364,30 +364,39 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
   );
 
   server.registerTool(
-    "score_job",
+    "score_jobs",
     {
       description:
-        "Score how well the applicant's saved resume matches a job posting, 0-100, using Cloudflare's Clef decision model. Use it before adding or applying to decide whether a job is worth the applicant's time. Contact details are removed from the resume first. The applicant can turn match scores off on the Resume page, and scores are limited per day; the result says how many are used.",
+        "Score how well the applicant's saved resume matches up to 10 job postings at once, 0-100 each, using Cloudflare's Clef decision model. When looking for jobs, score every posting you find instead of filtering by your own judgment, then search for more jobs like the highest scorers using their titles and the skills that matched (the skills, experience and domain parts show why). Pass applicationId to save a score as that application's resume match. Contact details are removed from the resume first. Scores are limited per day and the applicant can turn them off on the Resume page; the result says how many are used.",
       annotations: { openWorldHint: true },
       inputSchema: {
-        posting: z
-          .string()
-          .min(50)
-          .describe("Full job posting text: role, requirements, location"),
-        applicationId: z
-          .string()
-          .uuid()
-          .optional()
-          .describe("Save the score as this application's resume match"),
+        jobs: z
+          .array(
+            z.object({
+              label: z
+                .string()
+                .min(1)
+                .describe("Company and role, to match results to postings"),
+              posting: z
+                .string()
+                .min(50)
+                .describe(
+                  "Full job posting text: role, requirements, location",
+                ),
+              applicationId: z
+                .string()
+                .uuid()
+                .optional()
+                .describe("Save the score as this application's resume match"),
+            }),
+          )
+          .min(1)
+          .max(10),
       },
     },
-    async ({ posting, applicationId }) =>
+    async ({ jobs }) =>
       reply(
-        await call("/api/v1/match-scores", "POST", {
-          posting,
-          applicationId: applicationId ?? null,
-          today: today(),
-        }),
+        await call("/api/v1/match-scores", "POST", { jobs, today: today() }),
       ),
   );
 

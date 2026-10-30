@@ -45,8 +45,29 @@ async function turnOn(ctx?: ExecutionContext) {
   );
 }
 
-const score = (json: Record<string, unknown>, ctx?: ExecutionContext) =>
-  call("/api/v1/match-scores", { method: "POST", json }, ctx);
+type Job = { label?: string; posting?: string; applicationId?: string };
+
+const score = (jobs: Job[] = [{}], today?: string, ctx?: ExecutionContext) =>
+  call(
+    "/api/v1/match-scores",
+    {
+      method: "POST",
+      json: {
+        jobs: jobs.map((job, index) => ({
+          label: `Job ${index + 1}`,
+          posting: POSTING,
+          ...job,
+        })),
+        today,
+      },
+    },
+    ctx,
+  );
+
+type Scored = {
+  results: Array<{ label: string; match?: number; error?: string }>;
+  usedToday: number;
+};
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -89,12 +110,12 @@ describe("match scores", () => {
       usedToday: 0,
       dailyLimit: 25,
     });
-    expect((await score({ posting: POSTING })).status).toBe(409);
+    expect((await score()).status).toBe(409);
     await call("/api/v1/match-scores/settings", {
       method: "PUT",
       json: { enabled: false },
     });
-    expect((await score({ posting: POSTING })).status).toBe(403);
+    expect((await score()).status).toBe(403);
     expect(clef).not.toHaveBeenCalled();
   });
 
@@ -112,9 +133,7 @@ describe("match scores", () => {
         },
       }),
     );
-    const result = await data<{ match: number }>(
-      await score({ posting: POSTING, applicationId: id }),
-    );
+    const result = await data<Scored>(await score([{ applicationId: id }]));
     expect(result).toMatchObject({ usedToday: 1, dailyLimit: 25 });
     const [model, input] = clef.mock.calls[0] as unknown as [
       string,
@@ -127,7 +146,7 @@ describe("match scores", () => {
     expect(
       (await data<{ fit: number }>(await call(`/api/v1/applications/${id}`)))
         .fit,
-    ).toBe(result.match);
+    ).toBe(result.results[0].match);
   });
 
   it("stops at the daily limit, even if the client sends another date", async () => {
@@ -137,9 +156,40 @@ describe("match scores", () => {
       const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
       state.storage.kv.put("matchScores", { ...saved, used: 25 });
     });
-    const limited = await score({ posting: POSTING, today: "2001-01-01" });
+    const limited = await score([{}], "2001-01-01");
     expect(limited.status).toBe(429);
     expect(clef).not.toHaveBeenCalled();
+  });
+
+  it("scores a batch up to what's left today and says which ones ran out", async () => {
+    const clef = await answers();
+    await turnOn();
+    await runInDurableObject(tracker(), (_, state) => {
+      const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
+      state.storage.kv.put("matchScores", { ...saved, used: 23 });
+    });
+    const { results, usedToday } = await data<Scored>(
+      await score([
+        {},
+        { applicationId: "6f1c2c8e-8a4b-4f7e-9d1a-2b3c4d5e6f70" },
+        {},
+        {},
+      ]),
+    );
+    expect(clef).toHaveBeenCalledTimes(2);
+    expect(usedToday).toBe(25);
+    expect(results.map((result) => result.label)).toEqual([
+      "Job 1",
+      "Job 2",
+      "Job 3",
+      "Job 4",
+    ]);
+    expect(results[0].match).toBeTypeOf("number");
+    expect(results[1].error).toMatch(/Application not found/);
+    expect(results[2].match).toBeTypeOf("number");
+    expect(results[3].error).toMatch(
+      /ran out.*Don't estimate a match yourself/,
+    );
   });
 
   it("tells the AI when the shared free allowance is used up, and doesn't count it", async () => {
@@ -149,10 +199,9 @@ describe("match scores", () => {
       );
     });
     await turnOn();
-    const refused = await score({ posting: POSTING });
-    expect(refused.status).toBe(503);
-    expect(await refused.text()).toMatch(
-      /shared allowance.*Don't call score_job again today/,
+    const { results } = await data<Scored>(await score());
+    expect(results[0].error).toMatch(
+      /shared allowance.*Don't call score_jobs again today/,
     );
     expect(
       await data(await call("/api/v1/match-scores/settings")),
@@ -169,11 +218,11 @@ describe("match scores", () => {
       json: { enabled: false },
     });
     const result = (await rpc("tools/call", {
-      name: "score_job",
-      arguments: { posting: POSTING },
+      name: "score_jobs",
+      arguments: { jobs: [{ label: "Acme engineer", posting: POSTING }] },
     })) as { isError: boolean; content: Array<{ text: string }> };
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/Don't call score_job again/);
+    expect(result.content[0].text).toMatch(/Don't call score_jobs again/);
     expect(result.content[0].text).toMatch(/Don't estimate a match yourself/);
     expect(clef).not.toHaveBeenCalled();
   });
@@ -182,8 +231,8 @@ describe("match scores", () => {
     await answers();
     await turnOn();
     const result = (await rpc("tools/call", {
-      name: "score_job",
-      arguments: { posting: POSTING },
+      name: "score_jobs",
+      arguments: { jobs: [{ label: "Acme engineer", posting: POSTING }] },
     })) as { content: Array<{ text: string }> };
     expect(JSON.parse(result.content[0].text)).toMatchObject({ usedToday: 1 });
   });
