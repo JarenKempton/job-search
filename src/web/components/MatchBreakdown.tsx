@@ -33,9 +33,9 @@ export function MatchBreakdown({
   details,
 }: {
   fit: number;
-  details: Details;
+  details: Details | null;
 }) {
-  const groups = GROUPS.filter(({ key }) => details[key]?.length);
+  const groups = GROUPS.filter(({ key }) => details?.[key]?.length);
   return (
     <section aria-label="Resume match" className="space-y-3">
       <div className="flex items-baseline justify-between gap-3">
@@ -45,18 +45,30 @@ export function MatchBreakdown({
           <Badge variant="secondary">{matchRating(fit)}</Badge>
         </p>
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-        {PARTS.map(({ key, title }) => (
-          <div key={key} className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <dt className="text-muted-foreground">{title}</dt>
-              <dd className="tabular font-medium">{details[key] as number}</dd>
+      {!details && (
+        <>
+          <Progress value={fit} aria-label="Resume match" />
+          <p className="text-xs text-muted-foreground">
+            Entered by hand. Score it with your AI for a breakdown.
+          </p>
+        </>
+      )}
+      {details && (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {PARTS.map(({ key, title }) => (
+            <div key={key} className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <dt className="text-muted-foreground">{title}</dt>
+                <dd className="tabular font-medium">
+                  {details[key] as number}
+                </dd>
+              </div>
+              <Progress value={details[key] as number} aria-label={title} />
             </div>
-            <Progress value={details[key] as number} aria-label={title} />
-          </div>
-        ))}
-      </dl>
-      {groups.length > 0 && (
+          ))}
+        </dl>
+      )}
+      {details && groups.length > 0 && (
         <dl className="divide-y divide-border">
           {groups.map(({ key, title, icon: Icon }) => (
             <div

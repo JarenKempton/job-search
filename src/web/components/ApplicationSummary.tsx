@@ -1,5 +1,4 @@
 import { ExternalLinkIcon } from "lucide-react";
-import { matchRating } from "@/applications/fields";
 import type { ReactNode } from "react";
 import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
@@ -89,11 +88,6 @@ export function ApplicationSummary({
             {salaryRange(row.salaryMin, row.salaryMax)}
           </Fact>
         )}
-        {row.fit != null && !row.fitDetails && (
-          <Fact title="Resume match">
-            {row.fit}% · {matchRating(row.fit)}
-          </Fact>
-        )}
         {row.interest != null && <Fact title="Interest">{row.interest}/5</Fact>}
         {waiting != null &&
           row.status !== "saved" &&
@@ -111,7 +105,7 @@ export function ApplicationSummary({
         )}
         {row.source && <Fact title="Source">{label(row.source)}</Fact>}
       </dl>
-      {row.fit != null && row.fitDetails && (
+      {row.fit != null && (
         <MatchBreakdown fit={row.fit} details={row.fitDetails} />
       )}
 
