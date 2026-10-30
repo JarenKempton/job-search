@@ -15,6 +15,7 @@ export interface Env {
   CLOUDFLARE_ACCOUNT_ID?: string;
   ACCESS_GROUP_ID?: string;
   ACCESS_GROUPS_TOKEN?: string;
+  AI_GATEWAY_TOKEN?: string;
   EMAIL?: SendEmail;
   INVITE_FROM?: string;
 }

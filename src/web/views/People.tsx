@@ -1,19 +1,39 @@
-import { MailIcon, UserPlusIcon } from "lucide-react";
+import { EllipsisIcon, UserPlusIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { people as api, type PeopleList, type Person } from "@/web/api";
+import { AiUsageCard } from "@/web/components/AiUsageCard";
 import { Button } from "@/web/components/ui/button";
 import { Card, CardContent } from "@/web/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/web/components/ui/dropdown-menu";
 import { Input } from "@/web/components/ui/input";
 import { shortDate } from "@/web/format";
 
-function seen(person: Person) {
-  if (!person.lastSeen) return "Hasn't signed in yet";
-  return `Last signed in ${shortDate(person.lastSeen)}`;
+const EXTRA_SCORES = 25;
+
+function details(person: Person) {
+  const parts = [
+    person.lastSeen
+      ? `Last signed in ${shortDate(person.lastSeen)}`
+      : "Hasn't signed in yet",
+  ];
+  if (person.scores)
+    parts.unshift(
+      `${person.scores.usedToday} of ${person.scores.dailyLimit} scores today`,
+    );
+  if (!person.member) parts.push("not in the group");
+  return parts.join(" · ");
 }
 
 export function People() {
   const [list, setList] = useState<PeopleList | null>(null);
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -25,23 +45,18 @@ export function People() {
       .catch((cause: Error) => setError(cause.message));
   }, []);
 
-  async function run(action: () => Promise<PeopleList>, email?: string) {
+  async function run(action: () => Promise<PeopleList>, done?: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       const next = await action();
       setList(next);
-      if (email && next.invited !== undefined)
-        setNotice(
-          next.invited
-            ? `Invite sent to ${email}.`
-            : `${email} can sign in, but the invite email didn't send.`,
-        );
-      return true;
+      setNotice(done ?? null);
+      return next;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
@@ -50,12 +65,43 @@ export function People() {
   const add = async (event: FormEvent) => {
     event.preventDefault();
     const address = email.trim();
-    if (await run(() => api.add(address), address)) setEmail("");
+    const next = await run(() => api.add(address, name.trim() || null));
+    if (!next) return;
+    setNotice(
+      next.invited
+        ? `Invite sent to ${address}.`
+        : `${address} can sign in, but the invite email didn't send.`,
+    );
+    setEmail("");
+    setName("");
   };
 
-  const remove = (person: Person) => {
-    if (window.confirm(`Remove ${person.email}? Their saved jobs stay.`))
-      void run(() => api.remove(person.email));
+  const rename = (person: Person) => {
+    const answer = window.prompt(`Name for ${person.email}`, person.name ?? "");
+    if (answer !== null)
+      void run(() => api.rename(person.email, answer.trim() || null));
+  };
+
+  const resend = async (person: Person) => {
+    const next = await run(() => api.invite(person.email));
+    if (next)
+      setNotice(
+        next.invited
+          ? `Invite sent to ${person.email}.`
+          : `The invite email to ${person.email} didn't send.`,
+      );
+  };
+
+  const remove = async (person: Person) => {
+    if (!window.confirm(`Remove ${person.email}? Their saved jobs stay.`))
+      return;
+    const next = await run(() => api.remove(person.email));
+    if (next)
+      setNotice(
+        next.signedOut
+          ? `Removed ${person.email} and signed them out.`
+          : `Removed ${person.email}. They couldn't be signed out, so they lose access within a day.`,
+      );
   };
 
   return (
@@ -64,13 +110,26 @@ export function People() {
         <h1>People</h1>
       </header>
 
+      <AiUsageCard />
+
       <Card>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             People you add get an invite email and can sign in with that address
             to get their own private tracker.
           </p>
-          <form onSubmit={add} className="flex gap-2">
+          <form
+            onSubmit={add}
+            className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+          >
+            <Input
+              aria-label="Name"
+              placeholder="Name"
+              value={name}
+              maxLength={80}
+              disabled={!list?.configured}
+              onChange={(event) => setName(event.target.value)}
+            />
             <Input
               type="email"
               required
@@ -83,7 +142,7 @@ export function People() {
             <Button
               type="submit"
               size="sm"
-              className="h-9 shrink-0"
+              className="h-9"
               disabled={busy || !list?.configured || !email.trim()}
             >
               <UserPlusIcon />
@@ -117,39 +176,78 @@ export function People() {
                 className="flex items-center justify-between gap-3 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{person.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {seen(person)}
-                    {!person.member && " · not in the group"}
+                  <p className="truncate text-sm font-medium">
+                    {person.name ?? person.email}
+                  </p>
+                  {person.name && (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {person.email}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {details(person)}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  {person.member && !person.lastSeen && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() =>
-                        void run(() => api.invite(person.email), person.email)
-                      }
-                    >
-                      <MailIcon />
-                      Resend invite
-                    </Button>
-                  )}
-                  {person.member && list.configured && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
+                      aria-label={`Actions for ${person.name ?? person.email}`}
                       disabled={busy}
-                      onClick={() => remove(person)}
                     >
-                      Remove
+                      <EllipsisIcon />
                     </Button>
-                  )}
-                </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => rename(person)}>
+                      {person.name ? "Rename" : "Add a name"}
+                    </DropdownMenuItem>
+                    {person.scores && (
+                      <>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            void run(
+                              () => api.resetScores(person.email),
+                              `Reset today's scores for ${person.name ?? person.email}.`,
+                            )
+                          }
+                        >
+                          Reset today's scores
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            void run(
+                              () => api.allowExtra(person.email, EXTRA_SCORES),
+                              `${person.name ?? person.email} can score ${EXTRA_SCORES} more today.`,
+                            )
+                          }
+                        >
+                          Allow {EXTRA_SCORES} more today
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {person.member && list.configured && (
+                      <>
+                        {!person.lastSeen && (
+                          <DropdownMenuItem
+                            onSelect={() => void resend(person)}
+                          >
+                            Resend invite
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => void remove(person)}
+                        >
+                          Remove
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
           </CardContent>

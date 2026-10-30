@@ -2,7 +2,12 @@ import type { Env } from "../env";
 
 export async function sendInvite(
   env: Env,
-  { to, invitedBy, origin }: { to: string; invitedBy: string; origin: string },
+  {
+    to,
+    name,
+    invitedBy,
+    origin,
+  }: { to: string; name: string | null; invitedBy: string; origin: string },
 ) {
   if (!env.EMAIL || !env.INVITE_FROM) return false;
   try {
@@ -11,7 +16,7 @@ export async function sendInvite(
       from: { email: env.INVITE_FROM, name: "Job Search" },
       replyTo: invitedBy,
       subject: "You're invited to Job Search",
-      text: `Hi,
+      text: `Hi${name ? ` ${name.split(" ")[0]}` : ""},
 
 ${invitedBy} added you to Job Search, a private tracker for your job applications. Your jobs, resume and notes are visible only to you.
 

@@ -37,3 +37,12 @@ export function shortDate(day: string | null): string {
 
 export const percent = (value: number | null) =>
   value == null ? "—" : `${Math.round(value * 100)}%`;
+
+export function resetTime() {
+  const midnight = new Date();
+  midnight.setUTCHours(24, 0, 0, 0);
+  return midnight.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
