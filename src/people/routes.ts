@@ -29,7 +29,10 @@ const personSchema = z.object({
 });
 
 const extraSchema = z.object({ scores: z.number().int().min(1).max(500) });
-const ceilingSchema = z.object({ ceiling: z.number().min(0.25).max(50) });
+const ceilingSchema = z.object({
+  ceiling: z.number().min(0.25).max(50),
+  scope: z.enum(["today", "default"]).default("today"),
+});
 
 const tracker = (env: Env, email: string) =>
   env.TRACKER.get(env.TRACKER.idFromName(email));
@@ -111,10 +114,12 @@ export const peopleRoutes = new Hono<AppEnv>()
         "ai_usage_not_configured",
         "AI usage isn't set up yet.",
       );
-    const { ceiling } = ceilingSchema.parse(await readJson(context.req.raw));
+    const { ceiling, scope } = ceilingSchema.parse(
+      await readJson(context.req.raw),
+    );
     return ok({
       configured: true,
-      ...(await setCeiling(context.env, ceiling)),
+      ...(await setCeiling(context.env, ceiling, scope)),
     });
   })
   .get("/api/v1/people", async (context) => ok(await everyone(context.env)))

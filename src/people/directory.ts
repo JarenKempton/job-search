@@ -5,6 +5,9 @@ export type Visits = Record<string, { firstSeen: string; lastSeen: string }>;
 
 const VISITS = "visits";
 const NAMES = "names";
+const CEILING = "ceiling";
+
+export type CeilingPlan = { standard: number | null; raisedOn: string | null };
 
 export class Directory extends DurableObject<Env> {
   seen(email: string, day: string) {
@@ -21,6 +24,19 @@ export class Directory extends DurableObject<Env> {
 
   names(): Record<string, string> {
     return this.ctx.storage.kv.get<Record<string, string>>(NAMES) ?? {};
+  }
+
+  ceilingPlan(): CeilingPlan {
+    return (
+      this.ctx.storage.kv.get<CeilingPlan>(CEILING) ?? {
+        standard: null,
+        raisedOn: null,
+      }
+    );
+  }
+
+  saveCeilingPlan(plan: CeilingPlan) {
+    this.ctx.storage.kv.put(CEILING, plan);
   }
 
   rename(email: string, name: string | null) {

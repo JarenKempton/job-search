@@ -4,6 +4,7 @@ import { applicationRoutes } from "./applications/routes";
 import { utcToday } from "./applications/status";
 import type { AppEnv, Env } from "./env";
 import { requireAccess } from "./lib/cloudflare-access";
+import { restoreStandardCeiling, spendConfigured } from "./people/ai-spend";
 import { directory } from "./people/directory";
 import { peopleRoutes } from "./people/routes";
 import { ApiError, errorResponse, json } from "./lib/http";
@@ -103,5 +104,8 @@ export default {
     if (new URL(request.url).pathname.startsWith("/api/"))
       result.headers.set("cache-control", "no-store");
     return result;
+  },
+  async scheduled(_controller, env, ctx) {
+    if (spendConfigured(env)) ctx.waitUntil(restoreStandardCeiling(env));
   },
 } satisfies ExportedHandler<Env>;

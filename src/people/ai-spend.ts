@@ -2,6 +2,7 @@ import { utcToday } from "../applications/status";
 import type { Env } from "../env";
 import { ApiError } from "../lib/http";
 import { MATCH_GATEWAY } from "../match";
+import { directory } from "./directory";
 
 export const FREE_DAILY_DOLLARS = (10_000 / 1_000) * 0.011;
 
@@ -58,17 +59,10 @@ async function spentToday(env: Env) {
   );
 }
 
-export async function aiSpend(env: Env) {
-  const [spent, current] = await Promise.all([spentToday(env), gateway(env)]);
-  return {
-    spentToday: spent,
-    freeToday: FREE_DAILY_DOLLARS,
-    ceiling: current.spend_limits?.rules?.[0]?.limit ?? null,
-  };
-}
+const limitOf = (current: Gateway) =>
+  current.spend_limits?.rules?.[0]?.limit ?? null;
 
-export async function setCeiling(env: Env, ceiling: number) {
-  const current = await gateway(env);
+async function writeLimit(env: Env, current: Gateway, limit: number) {
   const rules = current.spend_limits?.rules ?? [];
   if (!rules.length)
     throw new ApiError(
@@ -84,10 +78,50 @@ export async function setCeiling(env: Env, ceiling: number) {
       spend_limits: {
         ...current.spend_limits,
         rules: rules.map((rule, index) =>
-          index === 0 ? { ...rule, limit: ceiling } : rule,
+          index === 0 ? { ...rule, limit } : rule,
         ),
       },
     }),
   });
+}
+
+export async function restoreStandardCeiling(env: Env) {
+  const plan = await directory(env).ceilingPlan();
+  if (!plan.raisedOn || plan.raisedOn === utcToday()) return;
+  if (plan.standard !== null)
+    await writeLimit(env, await gateway(env), plan.standard);
+  await directory(env).saveCeilingPlan({ ...plan, raisedOn: null });
+}
+
+export async function aiSpend(env: Env) {
+  await restoreStandardCeiling(env);
+  const [spent, current, plan] = await Promise.all([
+    spentToday(env),
+    gateway(env),
+    directory(env).ceilingPlan(),
+  ]);
+  const ceiling = limitOf(current);
+  return {
+    spentToday: spent,
+    freeToday: FREE_DAILY_DOLLARS,
+    ceiling,
+    standardCeiling: plan.standard ?? ceiling,
+    raisedToday: plan.raisedOn === utcToday(),
+  };
+}
+
+export async function setCeiling(
+  env: Env,
+  ceiling: number,
+  scope: "today" | "default",
+) {
+  const current = await gateway(env);
+  const plan = await directory(env).ceilingPlan();
+  await writeLimit(env, current, ceiling);
+  await directory(env).saveCeilingPlan(
+    scope === "today"
+      ? { standard: plan.standard ?? limitOf(current), raisedOn: utcToday() }
+      : { standard: ceiling, raisedOn: null },
+  );
   return aiSpend(env);
 }

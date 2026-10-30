@@ -139,12 +139,14 @@ export type AiUsage =
       spentToday: number;
       freeToday: number;
       ceiling: number | null;
+      standardCeiling: number | null;
+      raisedToday: boolean;
     };
 
 export const aiUsage = {
   get: () => api<AiUsage>("/api/v1/ai-usage"),
-  setCeiling: (ceiling: number) =>
-    api<AiUsage>("/api/v1/ai-usage", send("PUT", { ceiling })),
+  setCeiling: (ceiling: number, scope: "today" | "default") =>
+    api<AiUsage>("/api/v1/ai-usage", send("PUT", { ceiling, scope })),
 };
 
 export type MatchScoreStatus = {

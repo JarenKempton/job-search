@@ -277,20 +277,45 @@ describe("people", () => {
     expect(usage.ceiling).toBe(1);
     expect((await call("/api/v1/ai-usage")).status).toBe(403);
 
-    const raised = await data<{ ceiling: number }>(
-      await asOwner("/api/v1/ai-usage", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ceiling: 2 }),
-      }),
-    );
-    expect(raised.ceiling).toBe(2);
+    const setCeiling = async (body: object) =>
+      data<{ ceiling: number; standardCeiling: number; raisedToday: boolean }>(
+        await asOwner("/api/v1/ai-usage", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      );
+    expect(await setCeiling({ ceiling: 2 })).toMatchObject({
+      ceiling: 2,
+      standardCeiling: 1,
+      raisedToday: true,
+    });
     const put = fetch.mock.calls.find(([, init]) => init?.method === "PUT")!;
     const body = JSON.parse(String(put[1]?.body));
     expect(body).not.toHaveProperty("id");
     expect(body).toMatchObject({
       collect_logs: false,
       spend_limits: { rules: [{ id: "r1", limit: 2, window: 86400 }] },
+    });
+
+    expect(await setCeiling({ ceiling: 3, scope: "default" })).toMatchObject({
+      ceiling: 3,
+      standardCeiling: 3,
+      raisedToday: false,
+    });
+
+    await setCeiling({ ceiling: 5 });
+    await runInDurableObject(
+      env.DIRECTORY.get(env.DIRECTORY.idFromName("all")),
+      (_, state) =>
+        state.storage.kv.put("ceiling", {
+          standard: 3,
+          raisedOn: "2000-01-01",
+        }),
+    );
+    expect(await data(await asOwner("/api/v1/ai-usage"))).toMatchObject({
+      ceiling: 3,
+      raisedToday: false,
     });
   });
 
