@@ -1,6 +1,7 @@
-import { env } from "cloudflare:test";
+import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../src/env";
+import { DAILY_SCORES } from "../src/match";
 import worker from "../src/worker";
 import { call, data, signedInAs } from "./helpers";
 
@@ -10,6 +11,7 @@ const groupEnv = {
   ...env,
   ACCESS_GROUP_ID: "group-1",
   ACCESS_GROUPS_TOKEN: "token",
+  AI_GATEWAY_TOKEN: "ai-token",
   EMAIL: { send },
 } as unknown as Env;
 
@@ -166,6 +168,130 @@ describe("people", () => {
         })
       ).status,
     ).toBe(404);
+  });
+
+  it("keeps a name for each person and greets them by it", async () => {
+    cloudflareGroup([]);
+    await asOwner("/api/v1/people", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "nick@example.test", name: "Nick Polk" }),
+    });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringMatching(/^Hi Nick,/) }),
+    );
+    const renamed = await data<{ people: (Person & { name: string })[] }>(
+      await asOwner("/api/v1/people/nick%40example.test", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Nicholas" }),
+      }),
+    );
+    expect(
+      renamed.people.find((person) => person.email === "nick@example.test")
+        ?.name,
+    ).toBe("Nicholas");
+  });
+
+  it("resets a person's scores or allows more for today", async () => {
+    cloudflareGroup([]);
+    const someone = signedInAs("scorer@example.test");
+    await call("/api/v1/applications", {}, someone);
+    await runInDurableObject(
+      env.TRACKER.get(env.TRACKER.idFromName("scorer@example.test")),
+      (_, state) =>
+        state.storage.kv.put("matchScores", {
+          enabled: true,
+          day: new Date().toISOString().slice(0, 10),
+          used: DAILY_SCORES,
+        }),
+    );
+    const settings = async () =>
+      data<{ usedToday: number; dailyLimit: number }>(
+        await call("/api/v1/match-scores/settings", {}, someone),
+      );
+    await asOwner("/api/v1/people/scorer%40example.test/extra", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scores: 25 }),
+    });
+    expect(await settings()).toMatchObject({
+      usedToday: DAILY_SCORES,
+      dailyLimit: DAILY_SCORES + 25,
+    });
+    const reset = await data<{
+      people: { email: string; scores: { usedToday: number } | null }[];
+    }>(
+      await asOwner("/api/v1/people/scorer%40example.test/reset", {
+        method: "POST",
+      }),
+    );
+    expect(
+      reset.people.find((person) => person.email === "scorer@example.test")
+        ?.scores?.usedToday,
+    ).toBe(0);
+    expect(await settings()).toMatchObject({ usedToday: 0 });
+  });
+
+  it("reports today's AI spend against the free tier and changes the ceiling", async () => {
+    let gateway = {
+      id: "job-search",
+      created_at: "2026-10-30",
+      collect_logs: false,
+      spend_limits: {
+        enabled: true,
+        rules: [{ id: "r1", limit: 1, limitType: "cost", window: 86400 }],
+      },
+    };
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+        if (url.endsWith("/graphql"))
+          return Response.json({
+            data: {
+              viewer: {
+                accounts: [
+                  {
+                    aiGatewayRequestsAdaptiveGroups: [
+                      { sum: { cost: 0.05 } },
+                      { sum: { cost: 0.1 } },
+                    ],
+                  },
+                ],
+              },
+            },
+            errors: null,
+          });
+        if (init?.method === "PUT")
+          gateway = { ...gateway, ...JSON.parse(String(init.body)) };
+        return Response.json({ success: true, result: gateway });
+      });
+    const usage = await data<{
+      spentToday: number;
+      freeToday: number;
+      ceiling: number;
+    }>(await asOwner("/api/v1/ai-usage"));
+    expect(usage.spentToday).toBeCloseTo(0.15);
+    expect(usage.freeToday).toBeCloseTo(0.11);
+    expect(usage.ceiling).toBe(1);
+    expect((await call("/api/v1/ai-usage")).status).toBe(403);
+
+    const raised = await data<{ ceiling: number }>(
+      await asOwner("/api/v1/ai-usage", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ceiling: 2 }),
+      }),
+    );
+    expect(raised.ceiling).toBe(2);
+    const put = fetch.mock.calls.find(([, init]) => init?.method === "PUT")!;
+    const body = JSON.parse(String(put[1]?.body));
+    expect(body).not.toHaveProperty("id");
+    expect(body).toMatchObject({
+      collect_logs: false,
+      spend_limits: { rules: [{ id: "r1", limit: 2, window: 86400 }] },
+    });
   });
 
   it("says when Cloudflare refuses the change", async () => {

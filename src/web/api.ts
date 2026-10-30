@@ -87,6 +87,8 @@ export const resume = {
 
 export type Person = {
   email: string;
+  name: string | null;
+  scores: MatchScoreStatus | null;
   member: boolean;
   firstSeen: string | null;
   lastSeen: string | null;
@@ -102,8 +104,23 @@ export const me = () => api<{ email: string; admin: boolean }>("/api/v1/me");
 
 export const people = {
   list: () => api<PeopleList>("/api/v1/people"),
-  add: (email: string) =>
-    api<PeopleList>("/api/v1/people", send("POST", { email })),
+  add: (email: string, name: string | null) =>
+    api<PeopleList>("/api/v1/people", send("POST", { email, name })),
+  rename: (email: string, name: string | null) =>
+    api<PeopleList>(
+      `/api/v1/people/${encodeURIComponent(email)}`,
+      send("PATCH", { name }),
+    ),
+  resetScores: (email: string) =>
+    api<PeopleList>(
+      `/api/v1/people/${encodeURIComponent(email)}/reset`,
+      send("POST", {}),
+    ),
+  allowExtra: (email: string, scores: number) =>
+    api<PeopleList>(
+      `/api/v1/people/${encodeURIComponent(email)}/extra`,
+      send("POST", { scores }),
+    ),
   invite: (email: string) =>
     api<PeopleList>(
       `/api/v1/people/${encodeURIComponent(email)}/invite`,
@@ -113,6 +130,21 @@ export const people = {
     api<PeopleList>(`/api/v1/people/${encodeURIComponent(email)}`, {
       method: "DELETE",
     }),
+};
+
+export type AiUsage =
+  | { configured: false }
+  | {
+      configured: true;
+      spentToday: number;
+      freeToday: number;
+      ceiling: number | null;
+    };
+
+export const aiUsage = {
+  get: () => api<AiUsage>("/api/v1/ai-usage"),
+  setCeiling: (ceiling: number) =>
+    api<AiUsage>("/api/v1/ai-usage", send("PUT", { ceiling })),
 };
 
 export type MatchScoreStatus = {
