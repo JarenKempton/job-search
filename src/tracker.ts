@@ -8,14 +8,16 @@ import { datesForStatus, statusNote } from "./applications/status";
 import type {
   CreateApplicationInput,
   CreateEventInput,
+  ResumeInput,
   UpdateApplicationInput,
 } from "./applications/validation";
 import { database, type Database } from "./db/client";
-import { applicationEvents, applications } from "./db/schema";
+import { applicationEvents, applications, resumes } from "./db/schema";
 import type { Env } from "./env";
 
 const CHANGED = JSON.stringify({ type: "changed" });
 const MOVED_FROM_D1 = "movedFromD1";
+const RESUME = "current";
 
 type NewApplication = Omit<CreateApplicationInput, "today">;
 type ApplicationChanges = Omit<UpdateApplicationInput, "today">;
@@ -212,6 +214,39 @@ export class Tracker extends DurableObject<Env> {
       .get();
     if (deleted) this.changed();
     return deleted ?? null;
+  }
+
+  resume() {
+    return (
+      this.db.select().from(resumes).where(eq(resumes.id, RESUME)).get() ?? null
+    );
+  }
+
+  saveResume(input: ResumeInput) {
+    const resume = {
+      id: RESUME,
+      text: input.text,
+      fileName: input.fileName ?? null,
+      updatedAt: new Date(),
+    };
+    const saved = this.db
+      .insert(resumes)
+      .values(resume)
+      .onConflictDoUpdate({ target: resumes.id, set: resume })
+      .returning()
+      .get();
+    this.changed();
+    return saved;
+  }
+
+  removeResume() {
+    const removed = this.db
+      .delete(resumes)
+      .where(eq(resumes.id, RESUME))
+      .returning({ id: resumes.id })
+      .get();
+    if (removed) this.changed();
+    return Boolean(removed);
   }
 
   fetch() {

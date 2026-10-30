@@ -19,6 +19,8 @@ describe("remote MCP", () => {
       "update_application",
       "log_event",
       "delete_application",
+      "get_resume",
+      "save_resume",
     ]);
   });
 

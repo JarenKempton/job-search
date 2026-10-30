@@ -330,5 +330,36 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     async ({ id }) => reply(await call(`/api/v1/applications/${id}`, "DELETE")),
   );
 
+  server.registerTool(
+    "get_resume",
+    {
+      description:
+        "Get the applicant's saved resume text, or null when none is saved. Use it to judge fit, tailor answers, or compare against a posting.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {},
+    },
+    async () => reply(await call("/api/v1/resume")),
+  );
+
+  server.registerTool(
+    "save_resume",
+    {
+      description:
+        "Replace the applicant's saved resume with plain text the applicant provided. Only call this when the applicant asks to save or update their resume; it overwrites the previous version.",
+      annotations: { idempotentHint: true },
+      inputSchema: {
+        text: z.string().min(1).describe("Full resume as plain text"),
+        fileName: z.string().optional().describe("Original file name, if any"),
+      },
+    },
+    async ({ text, fileName }) =>
+      reply(
+        await call("/api/v1/resume", "PUT", {
+          text,
+          fileName: fileName ?? null,
+        }),
+      ),
+  );
+
   return server;
 }

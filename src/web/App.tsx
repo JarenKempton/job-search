@@ -8,25 +8,60 @@ import {
 import { Button } from "@/web/components/ui/button";
 import { ApplicationSheet } from "./components/ApplicationSheet";
 import { NewApplication } from "./components/NewApplication";
-import { useOpenApplication } from "./router";
+import { useOpenApplication, usePage } from "./router";
 import { useApplications } from "./use-applications";
 import { Applications } from "./views/Applications";
+import { Connect } from "./views/Connect";
+import { ResumePage } from "./views/ResumePage";
 
 export function App() {
   const data = useApplications();
   const sheet = useOpenApplication();
+  const { page, go } = usePage();
   const [adding, setAdding] = useState(false);
 
   return (
     <div className="dark app">
       <header className="topbar">
-        <span className="brand">
+        <button
+          type="button"
+          className="brand"
+          aria-label="Job Search"
+          onClick={() => go("applications")}
+        >
           <img src="/favicon.svg" alt="" width={24} height={24} />
-          Job Search
-        </span>
-        <Button size="sm" onClick={() => setAdding(true)}>
-          <PlusIcon /> Add job
-        </Button>
+          <span className="hidden sm:inline">Job Search</span>
+        </button>
+        <nav className="flex items-center gap-1" aria-label="Main">
+          <Button
+            variant={page === "applications" ? "secondary" : "ghost"}
+            size="sm"
+            aria-current={page === "applications" ? "page" : undefined}
+            onClick={() => go("applications")}
+          >
+            Applications
+          </Button>
+          {(["resume", "connect"] as const).map((item) => (
+            <Button
+              key={item}
+              variant={page === item ? "secondary" : "ghost"}
+              size="sm"
+              aria-current={page === item ? "page" : undefined}
+              onClick={() => go(item)}
+            >
+              {item === "resume" ? "Resume" : "Connect"}
+            </Button>
+          ))}
+          <Button
+            size="sm"
+            className="ml-1"
+            aria-label="Add job"
+            onClick={() => setAdding(true)}
+          >
+            <PlusIcon />
+            <span className="hidden sm:inline">Add job</span>
+          </Button>
+        </nav>
       </header>
 
       <main className="shell">
@@ -45,11 +80,18 @@ export function App() {
             </AlertAction>
           </Alert>
         )}
-        <Applications
-          data={data}
-          onOpen={sheet.open}
-          onNew={() => setAdding(true)}
-        />
+        {page === "resume" ? (
+          <ResumePage />
+        ) : page === "connect" ? (
+          <Connect />
+        ) : (
+          <Applications
+            data={data}
+            onOpen={sheet.open}
+            onNew={() => setAdding(true)}
+            onGo={go}
+          />
+        )}
       </main>
 
       {adding && (
@@ -57,6 +99,7 @@ export function App() {
           onClose={() => setAdding(false)}
           onCreated={async (id) => {
             setAdding(false);
+            go("applications");
             await data.refresh();
             sheet.open(id);
           }}

@@ -7,6 +7,7 @@ import { utcToday } from "./status";
 import {
   createApplicationSchema,
   createEventSchema,
+  resumeSchema,
   updateApplicationSchema,
 } from "./validation";
 
@@ -66,6 +67,19 @@ export const applicationRoutes = new Hono<AppEnv>()
       throw new ApiError(404, "event_not_found", "Event not found.");
     return ok(deleted);
   })
+  .get("/api/v1/resume", async (context) =>
+    ok(await context.var.tracker.resume()),
+  )
+  .put("/api/v1/resume", async (context) =>
+    ok(
+      await context.var.tracker.saveResume(
+        resumeSchema.parse(await readJson(context.req.raw)),
+      ),
+    ),
+  )
+  .delete("/api/v1/resume", async (context) =>
+    ok({ removed: await context.var.tracker.removeResume() }),
+  )
   .get("/api/v1/live", (context) => {
     if (context.req.header("upgrade")?.toLowerCase() !== "websocket")
       throw new ApiError(

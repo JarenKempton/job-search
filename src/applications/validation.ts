@@ -93,6 +93,12 @@ export const createEventSchema = z.object({
   note: text(5_000),
 });
 
+export const resumeSchema = z.object({
+  text: z.string().trim().min(1, "Resume text is empty.").max(50_000),
+  fileName: z.string().trim().max(200).nullable().optional(),
+});
+
+export type ResumeInput = z.infer<typeof resumeSchema>;
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
 export type CreateEventInput = z.infer<typeof createEventSchema>;

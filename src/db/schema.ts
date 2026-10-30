@@ -77,5 +77,13 @@ export const applicationEvents = sqliteTable(
   ],
 );
 
+export const resumes = sqliteTable("resumes", {
+  id: text("id").primaryKey(),
+  text: text("text").notNull(),
+  fileName: text("file_name"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
 export type Application = typeof applications.$inferSelect;
+export type Resume = typeof resumes.$inferSelect;
 export type ApplicationEvent = typeof applicationEvents.$inferSelect;
