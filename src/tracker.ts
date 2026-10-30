@@ -4,7 +4,7 @@ import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 import migrations from "../drizzle/migrations.js";
 import { mergeBenefits } from "./applications/benefits";
 import type { Status } from "./applications/fields";
-import { datesForStatus, statusNote } from "./applications/status";
+import { datesForStatus, statusNote, utcToday } from "./applications/status";
 import type {
   CreateApplicationInput,
   CreateEventInput,
@@ -14,10 +14,27 @@ import type {
 import { database, type Database } from "./db/client";
 import { applicationEvents, applications, resumes } from "./db/schema";
 import type { Env } from "./env";
+import { askClef, DAILY_SCORES } from "./match";
 
 const CHANGED = JSON.stringify({ type: "changed" });
 const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
+const MATCH_SCORES = "matchScores";
+
+type MatchSettings = { enabled: boolean; day: string; used: number };
+type JobToScore = {
+  label: string;
+  posting: string;
+  applicationId?: string | null;
+};
+
+const failure = (status: number, code: string, message: string) => ({
+  failure: { status, code, message },
+});
+const LIMITS = [
+  { windowMs: 60_000, max: 120 },
+  { windowMs: 86_400_000, max: 10_000 },
+];
 
 type NewApplication = Omit<CreateApplicationInput, "today">;
 type ApplicationChanges = Omit<UpdateApplicationInput, "today">;
@@ -54,6 +71,7 @@ function copyRows(
 
 export class Tracker extends DurableObject<Env> {
   private readonly db: Database;
+  private readonly windows = LIMITS.map(() => ({ start: 0, count: 0 }));
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -65,6 +83,22 @@ export class Tracker extends DurableObject<Env> {
       await migrate(this.db, migrations);
       await this.moveFromD1();
     });
+  }
+
+  retryAfter(now = Date.now()) {
+    let wait = 0;
+    LIMITS.forEach(({ windowMs, max }, index) => {
+      const window = this.windows[index];
+      if (now - window.start >= windowMs)
+        Object.assign(window, { start: now, count: 0 });
+      if (window.count >= max)
+        wait = Math.max(
+          wait,
+          Math.ceil((window.start + windowMs - now) / 1000),
+        );
+    });
+    if (!wait) for (const window of this.windows) window.count++;
+    return wait;
   }
 
   list(order: "updated" | "created") {
@@ -249,6 +283,102 @@ export class Tracker extends DurableObject<Env> {
     return Boolean(removed);
   }
 
+  matchScores() {
+    const { enabled, used } = this.matchSettings();
+    return {
+      enabled,
+      usedToday: used,
+      dailyLimit: DAILY_SCORES,
+    };
+  }
+
+  setMatchScores(enabled: boolean) {
+    this.ctx.storage.kv.put(MATCH_SCORES, { ...this.matchSettings(), enabled });
+    this.changed();
+    return this.matchScores();
+  }
+
+  async scoreJobs(jobs: JobToScore[], today: string) {
+    const settings = this.matchSettings();
+    if (!settings.enabled)
+      return failure(
+        403,
+        "match_scores_off",
+        "Match scores are turned off for this person. Don't call score_jobs again in this conversation; tell them they can turn on match scores on the Resume page. Don't estimate a match yourself; leave the resume match blank.",
+      );
+    const resume = this.resume();
+    if (!resume)
+      return failure(
+        409,
+        "no_resume",
+        "No resume is saved. Ask the person to add one on the Resume page, or call save_resume with resume text they give you, then try again.",
+      );
+    const remaining = DAILY_SCORES - settings.used;
+    if (remaining <= 0)
+      return failure(
+        429,
+        "match_score_daily_limit",
+        `All ${DAILY_SCORES} of today's match scores are used; they reset at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank.`,
+      );
+    const scorable = jobs.filter(
+      (job) => !job.applicationId || this.application(job.applicationId),
+    );
+    const toScore = scorable.slice(0, remaining);
+    this.ctx.storage.kv.put(MATCH_SCORES, {
+      ...settings,
+      used: settings.used + toScore.length,
+    });
+    const scored = await Promise.all(
+      toScore.map(async (job) => ({
+        job,
+        result: await askClef(this.env.AI, resume.text, job.posting),
+      })),
+    );
+    const failed = scored.filter(({ result }) => "error" in result).length;
+    const now = this.matchSettings();
+    if (failed && now.day === settings.day)
+      this.ctx.storage.kv.put(MATCH_SCORES, {
+        ...now,
+        used: Math.max(0, now.used - failed),
+      });
+    const results = jobs.map((job) => {
+      const label = job.label;
+      if (!scorable.includes(job))
+        return { label, error: "Application not found. Check the id." };
+      const done = scored.find((entry) => entry.job === job);
+      if (!done)
+        return {
+          label,
+          error: `Not scored: today's ${DAILY_SCORES} match scores ran out. Don't estimate a match yourself; leave the resume match blank.`,
+        };
+      if ("error" in done.result)
+        return {
+          label,
+          error:
+            done.result.error === "allowance"
+              ? "Not scored: today's shared allowance for match scores is used up; it resets at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank."
+              : "This posting couldn't be scored. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
+        };
+      const saved =
+        !job.applicationId ||
+        this.update(job.applicationId, { fit: done.result.match.match }, today);
+      return saved
+        ? {
+            label,
+            applicationId: job.applicationId ?? null,
+            ...done.result.match,
+          }
+        : {
+            label,
+            ...done.result.match,
+            error:
+              "Scored, but the application was deleted before the score could be saved.",
+          };
+    });
+    this.changed();
+    return { results, ...this.matchScores() };
+  }
+
   fetch() {
     const { 0: client, 1: server } = new WebSocketPair();
     this.ctx.acceptWebSocket(server);
@@ -263,6 +393,15 @@ export class Tracker extends DurableObject<Env> {
       .from(applications)
       .where(eq(applications.id, id))
       .get();
+  }
+
+  private matchSettings(): MatchSettings {
+    const today = utcToday();
+    const saved = this.ctx.storage.kv.get<MatchSettings>(MATCH_SCORES);
+    const enabled = saved?.enabled ?? true;
+    return saved?.day === today
+      ? { enabled, day: today, used: saved.used }
+      : { enabled, day: today, used: 0 };
   }
 
   private changed() {

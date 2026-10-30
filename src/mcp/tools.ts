@@ -70,7 +70,9 @@ const fields = {
     .min(0)
     .max(100)
     .optional()
-    .describe("How well the applicant matches the posting, 0-100"),
+    .describe(
+      "How well the applicant matches the posting, 0-100. Prefer score_jobs, which sets this from a decision model; never estimate it yourself.",
+    ),
   interest: z.number().int().min(1).max(5).optional(),
   status: z
     .enum(STATUSES)
@@ -358,6 +360,44 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
           text,
           fileName: fileName ?? null,
         }),
+      ),
+  );
+
+  server.registerTool(
+    "score_jobs",
+    {
+      description:
+        "Score how well the applicant's saved resume matches up to 10 job postings at once, 0-100 each, using Cloudflare's Clef decision model. When looking for jobs, score every posting you find instead of filtering by your own judgment, then search for more jobs like the highest scorers using their titles and the skills that matched (the skills, experience and domain parts show why). Scoring doesn't add anything to the tracker; only add jobs the applicant picks. Pass applicationId to save a score as that application's resume match. Contact details are removed from the resume first. Scores are limited per day and the applicant can turn them off on the Resume page; the result says how many are used.",
+      annotations: { openWorldHint: true },
+      inputSchema: {
+        jobs: z
+          .array(
+            z.object({
+              label: z
+                .string()
+                .min(1)
+                .describe("Company and role, to match results to postings"),
+              posting: z
+                .string()
+                .min(50)
+                .max(30_000)
+                .describe(
+                  "Job posting text: role, requirements, location. Leave out page navigation and unrelated text.",
+                ),
+              applicationId: z
+                .string()
+                .uuid()
+                .optional()
+                .describe("Save the score as this application's resume match"),
+            }),
+          )
+          .min(1)
+          .max(10),
+      },
+    },
+    async ({ jobs }) =>
+      reply(
+        await call("/api/v1/match-scores", "POST", { jobs, today: today() }),
       ),
   );
 
