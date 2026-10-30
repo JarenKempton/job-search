@@ -41,22 +41,65 @@ export type JobMatch = {
   confidence: number | null;
 };
 
+const HEADER_LINES = 6;
+const NAME = /^\p{Lu}[\p{L}'.-]*(?:\s+\p{Lu}[\p{L}'.-]*){1,3}$/u;
+const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+const URL = /\b(?:https?:\/\/|www\.)[^\s),;]+/gi;
+const PROFILE =
+  /\b(?:linkedin|github|gitlab|behance|dribbble|medium|twitter|x)\.com\/[^\s),;]*/gi;
+const US_PHONE = /(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+const INTL_PHONE = /\+\d{1,3}(?:[\s.-]?\(?\d{1,4}\)?){2,5}/g;
+const SITE =
+  /\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|io|dev|me|co|app|site|page|tech|xyz)\b(?:\/[^\s),;]*)?/gi;
+const HANDLE = /(^|[\s(|·•])@\w{2,30}\b/g;
+const CONTACT_LINE =
+  /[|·•@]|\d{3}[\s.-]?\d{4}|linkedin|github|portfolio|website|^\s*\S+\.[a-z]{2,}\S*\s*$/i;
+const STREET =
+  /\b\d{1,6}\s+(?:[\w.'-]+\s){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Ct|Court|Pl|Place)\b\.?/g;
+
+function nameIn(line: string) {
+  const candidate = line
+    .replace(/^[#*\s]+/, "")
+    .split(/[|,·•–—]/)[0]
+    .trim();
+  return NAME.test(candidate) ? candidate : null;
+}
+
 export function redact(resume: string) {
   const lines = resume.split("\n");
-  const first = lines.findIndex((line) => line.trim());
-  if (first >= 0 && /^[\p{L} .'-]{2,60}$/u.test(lines[first].trim()))
-    lines[first] = "[name]";
-  return lines
+  const first = lines.find((line) => line.trim());
+  const name = first ? nameIn(first) : null;
+  let seen = 0;
+  const redacted = lines
+    .map((line) => {
+      if (!line.trim() || seen++ >= HEADER_LINES) return line;
+      const withoutAddress = line.replace(STREET, "[address]");
+      return CONTACT_LINE.test(line)
+        ? withoutAddress
+            .replace(HANDLE, "$1[handle]")
+            .replace(EMAIL, "[email]")
+            .replace(SITE, "[link]")
+        : withoutAddress;
+    })
     .join("\n")
-    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "[email]")
-    .replace(
-      /\b(https?:\/\/|www\.)\S+|\b[\w-]+\.(com|io|dev|me)\/\S*/gi,
-      "[link]",
-    )
-    .replace(
-      /(\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g,
-      "[phone]",
-    );
+    .replace(EMAIL, "[email]")
+    .replace(URL, "[link]")
+    .replace(PROFILE, "[link]")
+    .replace(INTL_PHONE, "[phone]")
+    .replace(US_PHONE, "[phone]");
+  if (!name) return redacted;
+  const parts = [name, ...name.split(/\s+/).filter((part) => part.length > 1)];
+  return parts.reduce(
+    (text, part) =>
+      text.replace(
+        new RegExp(
+          `(?<![\\p{L}])${part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}])`,
+          "gu",
+        ),
+        "[name]",
+      ),
+    redacted,
+  );
 }
 
 export function matchRequest(resume: string, posting: string) {
@@ -90,7 +133,21 @@ export function matchRequest(resume: string, posting: string) {
   };
 }
 
+const inRange = (value: unknown, max: number): value is number =>
+  typeof value === "number" &&
+  Number.isFinite(value) &&
+  value >= 0 &&
+  value <= max;
+
 export function combine({ answers }: ClefResponse): JobMatch {
+  const dimensions = Object.keys(LEVELS) as Dimension[];
+  if (
+    !dimensions.every((dimension) =>
+      inRange(answers?.[dimension]?.score, LEVELS[dimension].length - 1),
+    ) ||
+    !inRange(answers?.hard_requirements?.noul, 1)
+  )
+    throw new Error("Clef returned an answer outside the expected range.");
   const percent = (dimension: Dimension) =>
     answers[dimension].score / (LEVELS[dimension].length - 1);
   const weighted = (Object.keys(WEIGHTS) as Dimension[]).reduce(
@@ -122,7 +179,7 @@ export async function askClef(ai: Ai, resume: string, posting: string) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(JSON.stringify({ clefError: message.slice(0, 200) }));
     return {
-      error: /neuron|4006|daily/i.test(message)
+      error: /4006|neurons/i.test(message)
         ? ("allowance" as const)
         : ("failed" as const),
     };

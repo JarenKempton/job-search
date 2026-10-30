@@ -314,13 +314,12 @@ export class Tracker extends DurableObject<Env> {
       })),
     );
     const failed = scored.filter(({ result }) => "error" in result).length;
-    if (failed) {
-      const now = this.matchSettings();
+    const now = this.matchSettings();
+    if (failed && now.day === settings.day)
       this.ctx.storage.kv.put(MATCH_SCORES, {
         ...now,
         used: Math.max(0, now.used - failed),
       });
-    }
     const results = jobs.map((job) => {
       const label = job.label;
       if (!scorable.includes(job))
@@ -339,13 +338,21 @@ export class Tracker extends DurableObject<Env> {
               ? "Not scored: today's shared allowance for match scores is used up; it resets at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank."
               : "This posting couldn't be scored. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
         };
-      if (job.applicationId)
+      const saved =
+        !job.applicationId ||
         this.update(job.applicationId, { fit: done.result.match.match }, today);
-      return {
-        label,
-        applicationId: job.applicationId ?? null,
-        ...done.result.match,
-      };
+      return saved
+        ? {
+            label,
+            applicationId: job.applicationId ?? null,
+            ...done.result.match,
+          }
+        : {
+            label,
+            ...done.result.match,
+            error:
+              "Scored, but the application was deleted before the score could be saved.",
+          };
     });
     this.changed();
     return { results, ...this.matchScores() };

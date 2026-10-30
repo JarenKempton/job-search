@@ -84,6 +84,29 @@ describe("match scores", () => {
     expect(redacted).toContain("TypeScript, React");
   });
 
+  it.each([
+    ["# Alex Rivera\nalex@x.com", "# [name]\n[email]"],
+    ["Alex Rivera, PMP\nSkills", "[name], PMP\nSkills"],
+    [
+      "Alex Rivera | (512) 555-0142 | alexrivera.net/work | alex.dev | @alexrivera\n123 Main St, Austin TX",
+      "[name] | [phone] | [link] | [link] | [handle]\n[address], Austin TX",
+    ],
+    ["Summary\nBuilt things", "Summary\nBuilt things"],
+    ["Alex Rivera\nReference: Alex Rivera", "[name]\nReference: [name]"],
+    ["Jane Doe\n+44 20 7946 0958", "[name]\n[phone]"],
+    [
+      "Jane Doe\nSkills: Socket.io/Redis, Amazon.com/Alexa",
+      "[name]\nSkills: Socket.io/Redis, Amazon.com/Alexa",
+    ],
+    ["Jane Doe\n(see https://alex.dev), more", "[name]\n(see [link]), more"],
+    [
+      "Jane Doe\n2015-2018-2020, 2018 – 2020, 2019 - 2023",
+      "[name]\n2015-2018-2020, 2018 – 2020, 2019 - 2023",
+    ],
+  ])("redacts %j", (input, expected) => {
+    expect(redact(input)).toBe(expected);
+  });
+
   it("weights the parts in code and halves the match when hard requirements fail", () => {
     const met = combine(ANSWERS as never);
     expect(met).toMatchObject({
@@ -190,6 +213,34 @@ describe("match scores", () => {
     expect(results[3].error).toMatch(
       /ran out.*Don't estimate a match yourself/,
     );
+  });
+
+  it("treats an out-of-range answer as a failure: not saved, not counted", async () => {
+    await clefReturns(() => ({
+      answers: { ...ANSWERS.answers, skills: { score: null, confidence: 0.5 } },
+    }));
+    await turnOn();
+    const { id } = await data<{ id: string }>(
+      await call("/api/v1/applications", {
+        method: "POST",
+        json: {
+          company: "Acme",
+          role: "Engineer",
+          status: "saved",
+          requirements: [],
+          fit: 40,
+        },
+      }),
+    );
+    const { results, usedToday } = await data<Scored>(
+      await score([{ applicationId: id }]),
+    );
+    expect(results[0].error).toMatch(/couldn't be scored/);
+    expect(usedToday).toBe(0);
+    expect(
+      (await data<{ fit: number }>(await call(`/api/v1/applications/${id}`)))
+        .fit,
+    ).toBe(40);
   });
 
   it("tells the AI when the shared free allowance is used up, and doesn't count it", async () => {

@@ -10,13 +10,28 @@ export function MatchScoresCard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    matchScores
-      .get()
-      .then(setStatus)
-      .catch((cause: Error) => setError(cause.message));
+    const load = () => {
+      if (document.visibilityState !== "visible") return;
+      matchScores
+        .get()
+        .then(setStatus)
+        .catch((cause: Error) => setError(cause.message));
+    };
+    load();
+    window.addEventListener("focus", load);
+    document.addEventListener("visibilitychange", load);
+    return () => {
+      window.removeEventListener("focus", load);
+      document.removeEventListener("visibilitychange", load);
+    };
   }, []);
 
-  if (!status) return null;
+  if (!status)
+    return error ? (
+      <p className="form-error" role="alert">
+        {error}
+      </p>
+    ) : null;
 
   async function toggle(enabled: boolean) {
     setError(null);
@@ -39,8 +54,8 @@ export function MatchScoresCard() {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Scored by Cloudflare's Clef model, which keeps nothing. Contact
-          details are removed first.
+          Scored by Cloudflare's Clef model, which keeps nothing. Your name,
+          email, phone, links and street address are removed first.
         </p>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <Progress
