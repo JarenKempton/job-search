@@ -4,7 +4,7 @@ import { applicationRoutes } from "./applications/routes";
 import { utcToday } from "./applications/status";
 import type { AppEnv, Env } from "./env";
 import { requireAccess } from "./lib/cloudflare-access";
-import { ApiError, errorResponse } from "./lib/http";
+import { ApiError, errorResponse, json } from "./lib/http";
 import { normalizeError } from "./lib/normalize-error";
 import { jobSearchServer, unwrap } from "./mcp/tools";
 
@@ -28,10 +28,21 @@ app.use(async (context, next) => {
     context.env,
     context.executionCtx as ExecutionContext,
   );
-  context.set(
-    "tracker",
-    context.env.TRACKER.get(context.env.TRACKER.idFromName(email)),
+  const tracker = context.env.TRACKER.get(
+    context.env.TRACKER.idFromName(email),
   );
+  const wait = await tracker.retryAfter();
+  if (wait)
+    return json(
+      {
+        error: {
+          code: "rate_limited",
+          message: `Too many requests. Try again in ${wait} seconds.`,
+        },
+      },
+      { status: 429, headers: { "retry-after": String(wait) } },
+    );
+  context.set("tracker", tracker);
   await next();
 });
 app.route("/", applicationRoutes);

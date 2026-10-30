@@ -18,6 +18,10 @@ import type { Env } from "./env";
 const CHANGED = JSON.stringify({ type: "changed" });
 const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
+const LIMITS = [
+  { windowMs: 60_000, max: 120 },
+  { windowMs: 86_400_000, max: 2_000 },
+];
 
 type NewApplication = Omit<CreateApplicationInput, "today">;
 type ApplicationChanges = Omit<UpdateApplicationInput, "today">;
@@ -54,6 +58,7 @@ function copyRows(
 
 export class Tracker extends DurableObject<Env> {
   private readonly db: Database;
+  private readonly windows = LIMITS.map(() => ({ start: 0, count: 0 }));
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -65,6 +70,21 @@ export class Tracker extends DurableObject<Env> {
       await migrate(this.db, migrations);
       await this.moveFromD1();
     });
+  }
+
+  retryAfter(now = Date.now()) {
+    let wait = 0;
+    LIMITS.forEach(({ windowMs, max }, index) => {
+      const window = this.windows[index];
+      if (now - window.start >= windowMs)
+        Object.assign(window, { start: now, count: 0 });
+      if (++window.count > max)
+        wait = Math.max(
+          wait,
+          Math.ceil((window.start + windowMs - now) / 1000),
+        );
+    });
+    return wait;
   }
 
   list(order: "updated" | "created") {
