@@ -11,7 +11,8 @@ import { NewApplication } from "./components/NewApplication";
 import { useOpenApplication, usePage } from "./router";
 import { useApplications } from "./use-applications";
 import { Applications } from "./views/Applications";
-import { Setup } from "./views/Setup";
+import { Connect } from "./views/Connect";
+import { ResumePage } from "./views/ResumePage";
 
 export function App() {
   const data = useApplications();
@@ -25,10 +26,11 @@ export function App() {
         <button
           type="button"
           className="brand"
+          aria-label="Job Search"
           onClick={() => go("applications")}
         >
           <img src="/favicon.svg" alt="" width={24} height={24} />
-          Job Search
+          <span className="hidden sm:inline">Job Search</span>
         </button>
         <nav className="flex items-center gap-1" aria-label="Main">
           <Button
@@ -39,14 +41,17 @@ export function App() {
           >
             Applications
           </Button>
-          <Button
-            variant={page === "setup" ? "secondary" : "ghost"}
-            size="sm"
-            aria-current={page === "setup" ? "page" : undefined}
-            onClick={() => go("setup")}
-          >
-            Setup
-          </Button>
+          {(["resume", "connect"] as const).map((item) => (
+            <Button
+              key={item}
+              variant={page === item ? "secondary" : "ghost"}
+              size="sm"
+              aria-current={page === item ? "page" : undefined}
+              onClick={() => go(item)}
+            >
+              {item === "resume" ? "Resume" : "Connect"}
+            </Button>
+          ))}
           <Button
             size="sm"
             className="ml-1"
@@ -75,14 +80,16 @@ export function App() {
             </AlertAction>
           </Alert>
         )}
-        {page === "setup" ? (
-          <Setup />
+        {page === "resume" ? (
+          <ResumePage />
+        ) : page === "connect" ? (
+          <Connect />
         ) : (
           <Applications
             data={data}
             onOpen={sheet.open}
             onNew={() => setAdding(true)}
-            onSetup={() => go("setup")}
+            onGo={go}
           />
         )}
       </main>

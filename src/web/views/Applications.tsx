@@ -47,12 +47,12 @@ export function Applications({
   data,
   onOpen,
   onNew,
-  onSetup,
+  onGo,
 }: {
   data: ApplicationsData;
   onOpen: (id: string) => void;
   onNew: () => void;
-  onSetup: () => void;
+  onGo: (page: "resume" | "connect") => void;
 }) {
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<StageKey | null>(null);
@@ -94,13 +94,13 @@ export function Applications({
     return (
       <div className="empty-panel">
         <strong>No applications yet</strong>
-        <span>Connect your AI tool and upload your resume to get started.</span>
+        <span>Connect your AI tool to start tracking.</span>
         <div className="flex flex-wrap justify-center gap-2 pt-2">
-          <Button size="sm" onClick={onSetup}>
-            Set up
+          <Button size="sm" onClick={() => onGo("connect")}>
+            Connect your AI
           </Button>
-          <Button size="sm" variant="outline" onClick={onNew}>
-            Add a job manually
+          <Button size="sm" variant="outline" onClick={() => onGo("resume")}>
+            Add your resume
           </Button>
         </div>
       </div>

@@ -3,10 +3,18 @@ import { useCallback, useEffect, useState } from "react";
 const read = () =>
   decodeURIComponent(window.location.hash.replace(/^#\/?/, "")) || null;
 
-export type Page = "applications" | "setup";
+export type Page = "applications" | "resume" | "connect";
+
+const PATHS: Record<Page, string> = {
+  applications: "/",
+  resume: "/resume",
+  connect: "/connect",
+};
 
 const page = (): Page =>
-  window.location.pathname === "/setup" ? "setup" : "applications";
+  (Object.entries(PATHS).find(
+    ([, path]) => path === window.location.pathname,
+  )?.[0] as Page | undefined) ?? "applications";
 
 export function usePage() {
   const [current, setCurrent] = useState(page);
@@ -18,7 +26,7 @@ export function usePage() {
   }, []);
 
   const go = useCallback((next: Page) => {
-    window.history.pushState(null, "", next === "setup" ? "/setup" : "/");
+    window.history.pushState(null, "", PATHS[next]);
     setCurrent(next);
   }, []);
 

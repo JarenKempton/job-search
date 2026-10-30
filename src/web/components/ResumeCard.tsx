@@ -7,7 +7,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/web/components/ui/card";
 import { Textarea } from "@/web/components/ui/textarea";
 
@@ -81,10 +80,8 @@ export function ResumeCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your resume</CardTitle>
         <CardDescription>
-          Only the text is saved; the file never leaves your device. Your AI
-          tools can read it to judge fit.
+          Only the text is saved. The file stays on your device.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -104,10 +101,6 @@ export function ResumeCard() {
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              Review the text. Remove contact details if you like; they aren’t
-              needed for matching.
-            </p>
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
