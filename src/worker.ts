@@ -31,13 +31,13 @@ app.use(async (context, next) => {
   const tracker = context.env.TRACKER.get(
     context.env.TRACKER.idFromName(email),
   );
-  const wait = await tracker.retryAfter();
+  const wait = context.req.path === "/mcp" ? 0 : await tracker.retryAfter();
   if (wait)
     return json(
       {
         error: {
           code: "rate_limited",
-          message: `Too many requests. Try again in ${wait} seconds.`,
+          message: `Too many requests from this account. Wait ${wait} seconds before trying again, and don't retry in a loop.`,
         },
       },
       { status: 429, headers: { "retry-after": String(wait) } },

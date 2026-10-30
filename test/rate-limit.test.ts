@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { call, signedInAs } from "./helpers";
+import { call, rpc, signedInAs } from "./helpers";
 
 const busy = signedInAs("busy@example.test");
 
@@ -12,6 +12,17 @@ describe("per-person rate limit", () => {
     expect(limited.status).toBe(429);
     expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
     expect((await call("/api/v1/applications")).status).toBe(200);
+  });
+
+  it("tells an AI tool to wait instead of failing the MCP connection", async () => {
+    for (let index = 0; index < 120; index++)
+      await call("/api/v1/applications");
+    const result = (await rpc("tools/call", {
+      name: "list_applications",
+      arguments: {},
+    })) as { isError: boolean; content: Array<{ text: string }> };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/Wait \d+ seconds/);
   });
 
   it("resets each minute and caps a day at 2,000", async () => {
