@@ -380,8 +380,9 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
               posting: z
                 .string()
                 .min(50)
+                .max(30_000)
                 .describe(
-                  "Full job posting text: role, requirements, location",
+                  "Job posting text: role, requirements, location. Leave out page navigation and unrelated text.",
                 ),
               applicationId: z
                 .string()
