@@ -3,13 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 const read = () =>
   decodeURIComponent(window.location.hash.replace(/^#\/?/, "")) || null;
 
-export type Page = "applications" | "resume" | "connect" | "people";
+export type Page = "applications" | "resume" | "connect" | "admin";
 
 const PATHS: Record<Page, string> = {
   applications: "/",
   resume: "/resume",
   connect: "/connect",
-  people: "/people",
+  admin: "/admin",
 };
 
 const page = (): Page =>

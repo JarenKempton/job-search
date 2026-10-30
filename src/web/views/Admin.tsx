@@ -30,7 +30,7 @@ function details(person: Person) {
   return parts.join(" · ");
 }
 
-export function People() {
+export function Admin() {
   const [list, setList] = useState<PeopleList | null>(null);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -107,7 +107,7 @@ export function People() {
   return (
     <div className="home max-w-3xl">
       <header className="page-heading">
-        <h1>People</h1>
+        <h1>Admin</h1>
       </header>
 
       <AiUsageCard />

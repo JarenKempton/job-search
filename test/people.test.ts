@@ -56,7 +56,21 @@ describe("people", () => {
       email: "jaren@example.test",
       admin: false,
     });
-    expect((await call("/api/v1/people")).status).toBe(403);
+    for (const [method, path] of [
+      ["GET", "/api/v1/people"],
+      ["POST", "/api/v1/people"],
+      ["PATCH", "/api/v1/people/makayla%40example.test"],
+      ["DELETE", "/api/v1/people/makayla%40example.test"],
+      ["POST", "/api/v1/people/makayla%40example.test/invite"],
+      ["POST", "/api/v1/people/makayla%40example.test/reset"],
+      ["POST", "/api/v1/people/makayla%40example.test/extra"],
+      ["GET", "/api/v1/ai-usage"],
+      ["PUT", "/api/v1/ai-usage"],
+    ])
+      expect(
+        (await call(path, method === "GET" ? {} : { method, json: {} })).status,
+        `${method} ${path}`,
+      ).toBe(403);
     expect(await data(await call("/api/v1/me", {}, owner))).toMatchObject({
       admin: true,
     });
