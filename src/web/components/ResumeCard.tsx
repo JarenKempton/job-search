@@ -1,5 +1,5 @@
 import { FileTextIcon, UploadIcon } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { resume as api, type Resume } from "@/web/api";
 import { Button } from "@/web/components/ui/button";
 import {
@@ -10,10 +10,12 @@ import {
 } from "@/web/components/ui/card";
 import { Textarea } from "@/web/components/ui/textarea";
 
+const loadPdfReader = () => import("unpdf");
+
 async function readText(file: File) {
   if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name))
     return file.text();
-  const { extractText, getDocumentProxy } = await import("unpdf");
+  const { extractText, getDocumentProxy } = await loadPdfReader();
   const pdf = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()));
   const { text } = await extractText(pdf, { mergePages: true });
   return text;
@@ -22,7 +24,6 @@ async function readText(file: File) {
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 export function ResumeCard() {
-  const input = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState<Resume | null | undefined>(undefined);
   const [draft, setDraft] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -86,11 +87,12 @@ export function ResumeCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         <input
-          ref={input}
+          id="resume-file"
           type="file"
           accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
-          className="hidden"
+          className="sr-only"
           aria-label="Resume file"
+          disabled={busy}
           onChange={choose}
         />
         {draft !== null ? (
@@ -151,14 +153,14 @@ export function ResumeCard() {
             >
               Edit
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => input.current?.click()}
-            >
-              <UploadIcon /> Replace
+            <Button variant="outline" size="sm" asChild>
+              <label
+                htmlFor="resume-file"
+                aria-disabled={busy}
+                onPointerDown={loadPdfReader}
+              >
+                <UploadIcon /> {busy ? "Reading…" : "Replace"}
+              </label>
             </Button>
             <Button
               type="button"
@@ -172,13 +174,14 @@ export function ResumeCard() {
           </div>
         ) : saved === null ? (
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              disabled={busy}
-              onClick={() => input.current?.click()}
-            >
-              <UploadIcon /> {busy ? "Reading…" : "Upload PDF or text"}
+            <Button size="sm" asChild>
+              <label
+                htmlFor="resume-file"
+                aria-disabled={busy}
+                onPointerDown={loadPdfReader}
+              >
+                <UploadIcon /> {busy ? "Reading…" : "Upload PDF or text"}
+              </label>
             </Button>
             <Button
               type="button"
