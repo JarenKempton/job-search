@@ -75,6 +75,56 @@ describe("applications", () => {
     ]);
   });
 
+  it("moves the next follow-up after a logged follow-up and honors skipping", async () => {
+    const created = await create({
+      company: "Hooli",
+      role: "Platform Engineer",
+      status: "applied",
+      today: "2026-10-01",
+    });
+    const skipped = await data(
+      await call(`/api/v1/applications/${created.id}`, {
+        method: "PATCH",
+        json: { skipFollowUp: true, followUpOn: null },
+      }),
+    );
+    expect(skipped).toMatchObject({ skipFollowUp: true, followUpOn: null });
+
+    await call(`/api/v1/applications/${created.id}/events`, {
+      method: "POST",
+      json: {
+        kind: "follow_up",
+        occurredOn: "2026-10-20",
+        note: "Messaged the recruiter",
+        channel: "linkedin",
+      },
+    });
+    const detail = await data<Row & { events: Row[] }>(
+      await call(`/api/v1/applications/${created.id}`),
+    );
+    expect(detail).toMatchObject({
+      followUpOn: "2026-11-03",
+      skipFollowUp: false,
+    });
+    expect(detail.events[0]).toMatchObject({
+      kind: "follow_up",
+      note: "Messaged the recruiter",
+      channel: "linkedin",
+    });
+
+    await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { skipFollowUp: true, followUpOn: null },
+    });
+    const dated = await data(
+      await call(`/api/v1/applications/${created.id}`, {
+        method: "PATCH",
+        json: { followUpOn: "2026-11-10" },
+      }),
+    );
+    expect(dated).toMatchObject({ skipFollowUp: false });
+  });
+
   it("keeps a timeline and deletes it with the application", async () => {
     const created = await create({ company: "Initech", role: "SRE" });
     const event = await data<Row>(

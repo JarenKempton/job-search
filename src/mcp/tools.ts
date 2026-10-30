@@ -6,6 +6,7 @@ import {
 } from "../applications/benefits.ts";
 import {
   APPLY_METHODS,
+  CHANNELS,
   EMPLOYMENT_TYPES,
   EVENT_KINDS,
   REQUIREMENTS,
@@ -83,6 +84,12 @@ const fields = {
   appliedOn: day.optional(),
   heardBackOn: day.optional(),
   followUpOn: day.optional(),
+  skipFollowUp: z
+    .boolean()
+    .optional()
+    .describe(
+      "True when the applicant doesn't plan to follow up, which stops follow-up reminders. Setting followUpOn turns reminders back on.",
+    ),
   contactName: z.string().optional(),
   contactEmail: z.string().email().optional(),
   description: z.string().optional().describe("Full job description text"),
@@ -298,7 +305,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "log_event",
     {
       description:
-        "Add a timeline entry: a reply, call, interview, take-home, follow-up sent, offer, or note. Pair with update_application when the status changes.",
+        "Add a timeline entry: a reply, call, interview, take-home, follow-up sent, offer, or note. Pair with update_application when the status changes. For an email, put who it's from on the first line of note, then the email text without signatures, footers or quoted earlier messages. For follow_up, put who was contacted and the message in note; the next follow-up reminder moves to 14 days after occurredOn.",
       inputSchema: {
         id: z.string().uuid(),
         kind: z.enum(
@@ -308,15 +315,24 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
           ],
         ),
         occurredOn: day.optional().describe("Defaults to today"),
-        note: z.string().optional(),
+        note: z
+          .string()
+          .max(5_000)
+          .optional()
+          .describe("Details, or the message text for emails and follow-ups"),
+        channel: z
+          .enum(CHANNELS)
+          .optional()
+          .describe("How the message was sent or received"),
       },
     },
-    async ({ id, kind, occurredOn, note }) =>
+    async ({ id, kind, occurredOn, note, channel }) =>
       reply(
         await call(`/api/v1/applications/${id}/events`, "POST", {
           kind,
           occurredOn: occurredOn ?? today(),
           note: note ?? null,
+          channel: channel ?? null,
         }),
       ),
   );

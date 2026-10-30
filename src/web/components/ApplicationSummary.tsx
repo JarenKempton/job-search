@@ -5,6 +5,10 @@ import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { BenefitsSummary } from "@/web/components/BenefitsSummary";
+import {
+  FollowUpActions,
+  type FollowUp,
+} from "@/web/components/FollowUpActions";
 import { MatchBreakdown } from "@/web/components/MatchBreakdown";
 import { Badge } from "@/web/components/ui/badge";
 import { Button } from "@/web/components/ui/button";
@@ -15,7 +19,7 @@ import {
   TabsTrigger,
 } from "@/web/components/ui/tabs";
 import { daysBetween, label, salaryRange, shortDate } from "@/web/format";
-import { STALE_AFTER_DAYS } from "@/web/stats";
+import { FOLLOW_UP_AFTER_DAYS } from "@/applications/status";
 
 function Fact({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -29,10 +33,14 @@ function Fact({ title, children }: { title: string; children: ReactNode }) {
 export function ApplicationSummary({
   row,
   onEdit,
+  onFollowedUp,
+  onSkipFollowUp,
   timeline,
 }: {
   row: Application;
   onEdit: () => void;
+  onFollowedUp: (followUp: FollowUp) => Promise<void>;
+  onSkipFollowUp: () => Promise<void>;
   timeline: ReactNode;
 }) {
   const today = localToday();
@@ -76,7 +84,7 @@ export function ApplicationSummary({
               role="status"
               title={
                 !row.followUpOn && row.status === "applied"
-                  ? `Suggested after ${STALE_AFTER_DAYS} days without a reply`
+                  ? `Suggested after ${FOLLOW_UP_AFTER_DAYS} days without a reply`
                   : undefined
               }
             >
@@ -95,6 +103,12 @@ export function ApplicationSummary({
                 </Badge>
               )}
             </div>
+          )}
+          {next?.text === "Follow up" && (
+            <FollowUpActions
+              onFollowedUp={onFollowedUp}
+              onSkip={onSkipFollowUp}
+            />
           )}
 
           <dl className="facts">

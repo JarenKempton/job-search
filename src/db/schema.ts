@@ -3,6 +3,7 @@ import type { Benefits } from "../applications/benefits";
 import type { JobMatch } from "../match";
 import type {
   ApplyMethod,
+  Channel,
   EmploymentType,
   EventKind,
   Requirement,
@@ -39,6 +40,9 @@ export const applications = sqliteTable(
     appliedOn: text("applied_on"),
     heardBackOn: text("heard_back_on"),
     followUpOn: text("follow_up_on"),
+    skipFollowUp: integer("skip_follow_up", { mode: "boolean" })
+      .notNull()
+      .default(false),
     contactName: text("contact_name"),
     contactEmail: text("contact_email"),
     description: text("description"),
@@ -72,6 +76,7 @@ export const applicationEvents = sqliteTable(
     kind: text("kind").$type<EventKind>().notNull(),
     occurredOn: text("occurred_on").notNull(),
     note: text("note"),
+    channel: text("channel").$type<Channel>(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [

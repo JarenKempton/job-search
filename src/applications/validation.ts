@@ -2,6 +2,7 @@ import { z } from "zod";
 import { benefitsPatchSchema, benefitsSchema } from "./benefits";
 import {
   APPLY_METHODS,
+  CHANNELS,
   EMPLOYMENT_TYPES,
   EVENT_KINDS,
   REQUIREMENTS,
@@ -45,6 +46,7 @@ export const applicationFields = {
   appliedOn: optional(day),
   heardBackOn: optional(day),
   followUpOn: optional(day),
+  skipFollowUp: z.boolean().optional(),
   contactName: text(200),
   contactEmail: optional(z.email().max(320)),
   description: text(50_000),
@@ -91,6 +93,7 @@ export const createEventSchema = z.object({
   kind: z.enum(EVENT_KINDS),
   occurredOn: day,
   note: text(5_000),
+  channel: optional(z.enum(CHANNELS)),
 });
 
 export const resumeSchema = z.object({

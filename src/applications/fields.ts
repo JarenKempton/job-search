@@ -70,6 +70,17 @@ export type WorkMode = (typeof WORK_MODES)[number];
 export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
 export type EventKind = (typeof EVENT_KINDS)[number];
 
+export const CHANNELS = [
+  "email",
+  "linkedin",
+  "phone",
+  "text",
+  "in_person",
+  "other",
+] as const;
+
+export type Channel = (typeof CHANNELS)[number];
+
 export const RESPONDED_STATUSES: readonly Status[] = [
   "screening",
   "interviewing",
@@ -128,6 +139,9 @@ export const LABELS: Record<string, string> = {
   call: "Call",
   interview: "Interview",
   follow_up: "Follow-up sent",
+  phone: "Phone",
+  text: "Text message",
+  in_person: "In person",
 };
 
 // Free text preserves policy details; blank means unknown, not no benefit.

@@ -1,0 +1,1 @@
+ALTER TABLE `application_events` ADD `channel` text;
