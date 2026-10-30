@@ -27,8 +27,13 @@ const ANSWERS = {
 const tracker = () =>
   env.TRACKER.get(env.TRACKER.idFromName("jaren@example.test"));
 
-async function clefReturns(answer: () => unknown) {
-  const run = vi.fn(async () => answer());
+async function clefReturns(
+  answer: (input: { questions: Record<string, unknown> }) => unknown,
+) {
+  const run = vi.fn(
+    async (_model: string, input: { questions: Record<string, unknown> }) =>
+      answer(input),
+  );
   await runInDurableObject(tracker(), (instance) => {
     const self = instance as unknown as { env: Record<string, unknown> };
     self.env = { ...self.env, AI: { run } };
@@ -36,7 +41,21 @@ async function clefReturns(answer: () => unknown) {
   return run;
 }
 
-const answers = () => clefReturns(() => ANSWERS);
+const answers = () =>
+  clefReturns(({ questions }) => ({
+    ...ANSWERS,
+    answers: {
+      ...ANSWERS.answers,
+      ...Object.fromEntries(
+        Object.keys(questions)
+          .filter((key) => key.startsWith("requirement_"))
+          .map((key, index) => [
+            key,
+            { type: "noul", noul: [0.9, 0.1, 0.5][index % 3] },
+          ]),
+      ),
+    },
+  }));
 
 async function turnOn(ctx?: ExecutionContext) {
   await call("/api/v1/resume", { method: "PUT", json: { text: RESUME } }, ctx);
@@ -47,7 +66,12 @@ async function turnOn(ctx?: ExecutionContext) {
   );
 }
 
-type Job = { label?: string; posting?: string; applicationId?: string };
+type Job = {
+  label?: string;
+  posting?: string;
+  requirements?: string[];
+  applicationId?: string;
+};
 
 const score = (jobs: Job[] = [{}], today?: string, ctx?: ExecutionContext) =>
   call(
@@ -116,7 +140,9 @@ describe("match scores", () => {
       experience: 67,
       domain: 50,
       meetsHardRequirements: 100,
-      confidence: 0.6,
+      met: [],
+      missing: [],
+      unclear: [],
     });
     expect(met.match).toBe(
       Math.round(100 * (0.45 + 0.3 * (2 / 3) + 0.25 * 0.5)),
@@ -245,6 +271,29 @@ describe("match scores", () => {
       (await data<{ fit: number }>(await call(`/api/v1/applications/${id}`)))
         .fit,
     ).toBe(40);
+  });
+
+  it("sorts requirements into met, missing and unclear", async () => {
+    const clef = await answers();
+    await turnOn();
+    const requirements = ["TypeScript", "Go", "Degree", "React"];
+    const { results } = await data<{
+      results: Array<{ met: string[]; missing: string[]; unclear: string[] }>;
+    }>(await score([{ requirements }]));
+    expect(results[0]).toMatchObject({
+      met: ["TypeScript", "React"],
+      missing: ["Go"],
+      unclear: ["Degree"],
+    });
+    const [, input] = clef.mock.calls[0] as unknown as [
+      string,
+      { questions: Record<string, { instructions: string }> },
+    ];
+    expect(input.questions.requirement_1.instructions).toBe(
+      "Does the resume show: Go?",
+    );
+    await score([{ requirements: ["TypeScript"] }]);
+    expect(clef).toHaveBeenCalledTimes(2);
   });
 
   it("rates scores and rejects a summary instead of the full posting", async () => {

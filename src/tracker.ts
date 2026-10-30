@@ -26,13 +26,20 @@ type MatchSettings = { enabled: boolean; day: string; used: number };
 type JobToScore = {
   label: string;
   posting: string;
+  requirements?: string[];
   applicationId?: string | null;
 };
 
-async function scoreKey(resume: string, posting: string) {
+async function scoreKey(
+  resume: string,
+  posting: string,
+  requirements: string[],
+) {
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(`${resume}\n\u0000\n${posting}`),
+    new TextEncoder().encode(
+      [resume, posting, ...requirements].join("\n\u0000\n"),
+    ),
   );
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -325,7 +332,9 @@ export class Tracker extends DurableObject<Env> {
         "No resume is saved. Ask the person to add one on the Resume page, or call save_resume with resume text they give you, then try again.",
       );
     const keys = await Promise.all(
-      jobs.map((job) => scoreKey(resume.text, job.posting)),
+      jobs.map((job) =>
+        scoreKey(resume.text, job.posting, job.requirements ?? []),
+      ),
     );
     const settings = this.matchSettings();
     const known = this.scoreCache(settings.day);
@@ -348,7 +357,12 @@ export class Tracker extends DurableObject<Env> {
     const scored = await Promise.all(
       toScore.map(async (job) => ({
         job,
-        result: await askClef(this.env.AI, resume.text, job.posting),
+        result: await askClef(
+          this.env.AI,
+          resume.text,
+          job.posting,
+          job.requirements ?? [],
+        ),
       })),
     );
     const now = this.matchSettings();

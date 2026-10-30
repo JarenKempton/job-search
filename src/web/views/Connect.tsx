@@ -14,10 +14,10 @@ const SYNC_PROMPT = `Every day at 8 AM, update my Job Search tracker:
 const FIND_PROMPT = `Find jobs that fit my resume, using my Job Search tracker:
 1. Read my resume with get_resume, and list_applications so you skip jobs I already track.
 2. Search the web for current postings that fit. Keep each posting's full text and link.
-3. Score every posting with score_jobs, up to 10 at a time. Don't filter them yourself first.
+3. Score every posting with score_jobs, up to 10 at a time, with each posting's key requirements. Don't filter them yourself first.
 4. Search for more jobs like the three highest scorers, using their titles and the skills that matched, and score those too.
-5. Show me a table: company, role, score, why it fits, and the link. Don't add anything to my tracker yet.
-6. Ask which ones I want. Add only those with add_application (status saved, or applied with today's date if I say I applied), then call score_jobs again with their applicationId and full posting so the score, its breakdown and the posting are saved.`;
+5. Show me a table: company, role, score and rating, what I'm missing, and the link. Don't add anything to my tracker yet.
+6. Ask which ones I want. Add only those with add_application (status saved, or applied with today's date if I say I applied), then call score_jobs again with their applicationId, the same posting and the same requirements so the score, its breakdown and the posting are saved at no extra cost.`;
 
 const PROMPTS = [
   {

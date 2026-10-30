@@ -111,11 +111,22 @@ export function ApplicationSummary({
         {row.source && <Fact title="Source">{label(row.source)}</Fact>}
       </dl>
       {row.fitDetails && (
-        <p className="text-xs text-muted-foreground tabular">
-          Skills {row.fitDetails.skills} · Experience{" "}
-          {row.fitDetails.experience} · Related work {row.fitDetails.domain} ·
-          Hard requirements met {row.fitDetails.meetsHardRequirements}%
-        </p>
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p className="tabular">
+            Skills {row.fitDetails.skills} · Experience{" "}
+            {row.fitDetails.experience} · Related work {row.fitDetails.domain} ·
+            Hard requirements met {row.fitDetails.meetsHardRequirements}%
+          </p>
+          {row.fitDetails.met?.length > 0 && (
+            <p>Meets: {row.fitDetails.met.join(", ")}</p>
+          )}
+          {row.fitDetails.missing?.length > 0 && (
+            <p>Missing: {row.fitDetails.missing.join(", ")}</p>
+          )}
+          {row.fitDetails.unclear?.length > 0 && (
+            <p>Unclear: {row.fitDetails.unclear.join(", ")}</p>
+          )}
+        </div>
       )}
 
       {(row.contactName || row.contactEmail) && (
