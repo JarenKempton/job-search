@@ -3,12 +3,14 @@ import type { BenefitsPatch } from "@/applications/benefits";
 import type {
   Application as Row,
   ApplicationEvent as EventRow,
+  Resume as ResumeRow,
 } from "@/db/schema";
 
 type Json<T> = { [K in keyof T]: T[K] extends Date ? string : T[K] };
 
 export type Application = Json<Row>;
 export type ApplicationEvent = Json<EventRow>;
+export type Resume = Json<ResumeRow>;
 export type ApplicationDetail = Application & { events: ApplicationEvent[] };
 export type ApplicationInput = Omit<
   Application,
@@ -70,4 +72,12 @@ export const jobs = {
     ),
   removeEvent: (id: string) =>
     api<{ id: string }>(`/api/v1/events/${id}`, { method: "DELETE" }),
+};
+
+export const resume = {
+  get: () => api<Resume | null>("/api/v1/resume"),
+  save: (input: { text: string; fileName: string | null }) =>
+    api<Resume>("/api/v1/resume", send("PUT", input)),
+  remove: () =>
+    api<{ removed: boolean }>("/api/v1/resume", { method: "DELETE" }),
 };

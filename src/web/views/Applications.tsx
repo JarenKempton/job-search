@@ -47,10 +47,12 @@ export function Applications({
   data,
   onOpen,
   onNew,
+  onSetup,
 }: {
   data: ApplicationsData;
   onOpen: (id: string) => void;
   onNew: () => void;
+  onSetup: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<StageKey | null>(null);
@@ -92,10 +94,15 @@ export function Applications({
     return (
       <div className="empty-panel">
         <strong>No applications yet</strong>
-        <span>Ask your AI tool to add one, or add it here.</span>
-        <button type="button" className="link" onClick={onNew}>
-          Add your first job
-        </button>
+        <span>Connect your AI tool and upload your resume to get started.</span>
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
+          <Button size="sm" onClick={onSetup}>
+            Set up
+          </Button>
+          <Button size="sm" variant="outline" onClick={onNew}>
+            Add a job manually
+          </Button>
+        </div>
       </div>
     );
 
