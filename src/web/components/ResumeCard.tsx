@@ -1,6 +1,7 @@
 import { FileTextIcon, UploadIcon } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { resume as api, type Resume } from "@/web/api";
+import { cn } from "cn";
 import { Button } from "@/web/components/ui/button";
 import {
   Card,
@@ -10,10 +11,14 @@ import {
 } from "@/web/components/ui/card";
 import { Textarea } from "@/web/components/ui/textarea";
 
+const ACCEPT = ".pdf,.txt,application/pdf,text/plain";
+
+const loadPdfReader = () => import("unpdf");
+
 async function readText(file: File) {
   if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name))
     return file.text();
-  const { extractText, getDocumentProxy } = await import("unpdf");
+  const { extractText, getDocumentProxy } = await loadPdfReader();
   const pdf = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()));
   const { text } = await extractText(pdf, { mergePages: true });
   return text;
@@ -21,8 +26,44 @@ async function readText(file: File) {
 
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
+function UploadButton({
+  busy,
+  label,
+  variant,
+  onChange,
+}: {
+  busy: boolean;
+  label: string;
+  variant?: "outline";
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={variant}
+      asChild
+      className={cn(
+        "has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
+        busy && "pointer-events-none opacity-50",
+      )}
+    >
+      <label
+        aria-busy={busy}
+        onPointerDown={() => void loadPdfReader().catch(() => {})}
+      >
+        <input
+          type="file"
+          accept={ACCEPT}
+          className="sr-only"
+          onChange={onChange}
+        />
+        <UploadIcon /> {busy ? "Reading…" : label}
+      </label>
+    </Button>
+  );
+}
+
 export function ResumeCard() {
-  const input = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState<Resume | null | undefined>(undefined);
   const [draft, setDraft] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -49,17 +90,24 @@ export function ResumeCard() {
   }
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || busy) {
+      input.value = "";
+      return;
+    }
     void run(async () => {
-      const text = (await readText(file)).trim();
-      if (!text)
-        throw new Error(
-          "No text found in that file. Try another file or paste the text instead.",
-        );
-      setFileName(file.name);
-      setDraft(text);
+      try {
+        const text = (await readText(file)).trim();
+        if (!text)
+          throw new Error(
+            "No text found in that file. Try another file or paste the text instead.",
+          );
+        setFileName(file.name);
+        setDraft(text);
+      } finally {
+        input.value = "";
+      }
     });
   }
 
@@ -85,14 +133,6 @@ export function ResumeCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <input
-          ref={input}
-          type="file"
-          accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
-          className="hidden"
-          aria-label="Resume file"
-          onChange={choose}
-        />
         {draft !== null ? (
           <>
             <Textarea
@@ -151,15 +191,12 @@ export function ResumeCard() {
             >
               Edit
             </Button>
-            <Button
-              type="button"
+            <UploadButton
+              busy={busy}
+              label="Replace"
               variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => input.current?.click()}
-            >
-              <UploadIcon /> Replace
-            </Button>
+              onChange={choose}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -172,14 +209,11 @@ export function ResumeCard() {
           </div>
         ) : saved === null ? (
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              disabled={busy}
-              onClick={() => input.current?.click()}
-            >
-              <UploadIcon /> {busy ? "Reading…" : "Upload PDF or text"}
-            </Button>
+            <UploadButton
+              busy={busy}
+              label="Upload PDF or text"
+              onChange={choose}
+            />
             <Button
               type="button"
               variant="outline"

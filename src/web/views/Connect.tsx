@@ -1,3 +1,4 @@
+import { LogOutIcon } from "lucide-react";
 import { useState } from "react";
 import { CopyField } from "@/web/components/CopyField";
 import { Button } from "@/web/components/ui/button";
@@ -111,6 +112,17 @@ export function Connect() {
           ))}
         </CardContent>
       </Card>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        asChild
+        className="justify-self-start text-muted-foreground"
+      >
+        <a href="/cdn-cgi/access/logout">
+          <LogOutIcon /> Sign out
+        </a>
+      </Button>
     </div>
   );
 }

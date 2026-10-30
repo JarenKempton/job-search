@@ -1,4 +1,10 @@
-import { PlusIcon, XIcon } from "lucide-react";
+import {
+  BriefcaseIcon,
+  FileTextIcon,
+  PlugIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 import { useState } from "react";
 import {
   Alert,
@@ -8,11 +14,17 @@ import {
 import { Button } from "@/web/components/ui/button";
 import { ApplicationSheet } from "./components/ApplicationSheet";
 import { NewApplication } from "./components/NewApplication";
-import { useOpenApplication, usePage } from "./router";
+import { useOpenApplication, usePage, type Page } from "./router";
 import { useApplications } from "./use-applications";
 import { Applications } from "./views/Applications";
 import { Connect } from "./views/Connect";
 import { ResumePage } from "./views/ResumePage";
+
+const PAGES: { page: Page; label: string; Icon: typeof PlusIcon }[] = [
+  { page: "applications", label: "Applications", Icon: BriefcaseIcon },
+  { page: "resume", label: "Resume", Icon: FileTextIcon },
+  { page: "connect", label: "Connect", Icon: PlugIcon },
+];
 
 export function App() {
   const data = useApplications();
@@ -30,38 +42,35 @@ export function App() {
           onClick={() => go("applications")}
         >
           <img src="/favicon.svg" alt="" width={24} height={24} />
-          <span className="hidden sm:inline">Job Search</span>
+          <span>Job Search</span>
         </button>
-        <nav className="flex items-center gap-1" aria-label="Main">
-          <Button
-            variant={page === "applications" ? "secondary" : "ghost"}
-            size="sm"
-            aria-current={page === "applications" ? "page" : undefined}
-            onClick={() => go("applications")}
-          >
-            Applications
-          </Button>
-          {(["resume", "connect"] as const).map((item) => (
+        <nav
+          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-1 border-t bg-background px-(--gutter) pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] sm:static sm:ml-auto sm:flex sm:border-0 sm:p-0"
+          aria-label="Main"
+        >
+          {PAGES.map(({ page: item, label, Icon }) => (
             <Button
               key={item}
               variant={page === item ? "secondary" : "ghost"}
               size="sm"
+              className="max-sm:h-auto max-sm:flex-col max-sm:gap-0.5 max-sm:py-1.5 max-sm:text-[11px]"
               aria-current={page === item ? "page" : undefined}
               onClick={() => go(item)}
             >
-              {item === "resume" ? "Resume" : "Connect"}
+              <Icon className="sm:hidden" />
+              {label}
             </Button>
           ))}
-          <Button
-            size="sm"
-            className="ml-1"
-            aria-label="Add job"
-            onClick={() => setAdding(true)}
-          >
-            <PlusIcon />
-            <span className="hidden sm:inline">Add job</span>
-          </Button>
         </nav>
+        <Button
+          size="sm"
+          className="sm:ml-2"
+          aria-label="Add job"
+          onClick={() => setAdding(true)}
+        >
+          <PlusIcon />
+          Add job
+        </Button>
       </header>
 
       <main className="shell">
