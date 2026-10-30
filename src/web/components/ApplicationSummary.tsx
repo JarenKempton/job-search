@@ -5,6 +5,7 @@ import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { BenefitsSummary } from "@/web/components/BenefitsSummary";
+import { MatchBreakdown } from "@/web/components/MatchBreakdown";
 import { Badge } from "@/web/components/ui/badge";
 import { Button } from "@/web/components/ui/button";
 import { daysBetween, label, salaryRange, shortDate } from "@/web/format";
@@ -88,7 +89,7 @@ export function ApplicationSummary({
             {salaryRange(row.salaryMin, row.salaryMax)}
           </Fact>
         )}
-        {row.fit != null && (
+        {row.fit != null && !row.fitDetails && (
           <Fact title="Resume match">
             {row.fit}% · {matchRating(row.fit)}
           </Fact>
@@ -110,23 +111,8 @@ export function ApplicationSummary({
         )}
         {row.source && <Fact title="Source">{label(row.source)}</Fact>}
       </dl>
-      {row.fitDetails && (
-        <div className="space-y-1 text-xs text-muted-foreground">
-          <p className="tabular">
-            Skills {row.fitDetails.skills} · Experience{" "}
-            {row.fitDetails.experience} · Related work {row.fitDetails.domain} ·
-            Hard requirements met {row.fitDetails.meetsHardRequirements}%
-          </p>
-          {row.fitDetails.met?.length > 0 && (
-            <p>Meets: {row.fitDetails.met.join(", ")}</p>
-          )}
-          {row.fitDetails.missing?.length > 0 && (
-            <p>Missing: {row.fitDetails.missing.join(", ")}</p>
-          )}
-          {row.fitDetails.unclear?.length > 0 && (
-            <p>Unclear: {row.fitDetails.unclear.join(", ")}</p>
-          )}
-        </div>
+      {row.fit != null && row.fitDetails && (
+        <MatchBreakdown fit={row.fit} details={row.fitDetails} />
       )}
 
       {(row.contactName || row.contactEmail) && (
