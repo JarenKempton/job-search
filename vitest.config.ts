@@ -1,4 +1,4 @@
-import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
+import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
@@ -7,12 +7,6 @@ export default defineConfig({
     cloudflareTest(async () => ({
       wrangler: { configPath: "./wrangler.jsonc" },
       remoteBindings: false,
-      miniflare: {
-        bindings: {
-          TEST_MIGRATIONS: await readD1Migrations("./drizzle"),
-          LEGACY_OWNERS: JSON.stringify({ "Mover@Example.Test": "JAREN_D1" }),
-        },
-      },
     })),
   ],
   resolve: {

@@ -1,4 +1,4 @@
-import { applyD1Migrations, env, evictDurableObject } from "cloudflare:test";
+import { env, evictDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type { Application } from "../src/web/api";
 import { toForm, toInput } from "../src/web/components/form-state";
@@ -481,33 +481,5 @@ describe("structured benefits", () => {
         )
       ).benefits,
     ).toBeNull();
-  });
-});
-
-describe("benefits migration", () => {
-  it("adds only a nullable structured column while preserving all nine legacy text fields", async () => {
-    await applyD1Migrations(
-      env.JAREN_D1!,
-      env.TEST_MIGRATIONS.filter(({ name }) => name < "0002"),
-    );
-    await env
-      .JAREN_D1!.prepare(
-        `INSERT INTO applications (id, company, role, pto, sick_leave, holidays, healthcare, retirement, parental_leave, other_benefits, benefits_notes, benefits_source, created_at, updated_at)
-      VALUES ('old', 'Legacy', 'Engineer', 'Generous PTO', 'Ask recruiter', '10 holidays', 'Medical and dental', '4% match', '12 weeks', 'Wellness budget', 'Unconfirmed', 'Handbook', 0, 0)`,
-      )
-      .run();
-    const before = await env
-      .JAREN_D1!.prepare("SELECT * FROM applications WHERE id = 'old'")
-      .first();
-    await applyD1Migrations(env.JAREN_D1!, env.TEST_MIGRATIONS);
-    const after = await env
-      .JAREN_D1!.prepare("SELECT * FROM applications WHERE id = 'old'")
-      .first();
-    expect(after).toEqual({
-      ...before,
-      benefits: null,
-      fit_details: null,
-      skip_follow_up: 0,
-    });
   });
 });

@@ -70,18 +70,6 @@ Going over a daily limit makes further calls of that type fail until 00:00 UTC. 
 pnpm format:check && pnpm check && pnpm test && pnpm deploy:check
 ```
 
-## Moving the old D1 data (one time)
-
-Jaren’s data (`job-search` D1) and Makayla’s (`makayla-jobs` D1) are bound read-only as `JAREN_D1` and `MAKAYLA_D1`. The Worker secret `LEGACY_OWNERS` maps each email to its binding:
-
-```sh
-pnpm exec wrangler secret put LEGACY_OWNERS   # {"jaren@…":"JAREN_D1","makayla@…":"MAKAYLA_D1"}
-```
-
-The first time a mapped person’s object starts, it copies every application and event from their D1 in one transaction. It then compares the object’s row counts before and after against the D1 rows, and records a `movedFromD1` marker in the same transaction. If the counts don’t match, the transaction rolls back and the request fails, so the copy is retried next time. D1 is only read. The marker means the copy never runs twice, even if the person later deletes everything. Each copy logs `{"movedFromD1":{"applications":…,"events":…}}` to Workers Logs.
-
-Once both people are copied, a follow-up removes `JAREN_D1`, `MAKAYLA_D1`, `LEGACY_OWNERS` and the copy code. Then the `makayla-jobs` Worker, its D1 database and its Access app are retired.
-
 ## Benefits
 
 Each application has an optional **Benefits** section for vacation/PTO and rollover, sick leave, holidays, medical/dental/vision coverage and costs, retirement match and vesting, parental leave, other perks, notes, and the information source. Use text to preserve policy details; leave unknown benefits blank. These fields are included in CSV exports and available through both MCP transports with `add_application`, `update_application`, and `get_application`. Omitted fields stay unchanged on update; send `null` to clear a benefits field.

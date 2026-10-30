@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { asc, count, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 import migrations from "../drizzle/migrations.js";
 import { mergeBenefits } from "./applications/benefits";
@@ -23,7 +23,6 @@ import type { Env } from "./env";
 import { askClef, DAILY_SCORES, type JobMatch } from "./match";
 
 const CHANGED = JSON.stringify({ type: "changed" });
-const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
 const MATCH_SCORES = "matchScores";
 const SCORE_CACHE = "scoreCache";
@@ -84,20 +83,6 @@ function statusEvent(
   };
 }
 
-function copyRows(
-  sql: SqlStorage,
-  table: string,
-  rows: Record<string, SqlStorageValue>[],
-) {
-  for (const row of rows) {
-    const columns = Object.keys(row);
-    sql.exec(
-      `INSERT INTO "${table}" (${columns.map((column) => `"${column}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
-      ...Object.values(row),
-    );
-  }
-}
-
 export class Tracker extends DurableObject<Env> {
   private readonly db: Database;
   private readonly windows = LIMITS.map(() => ({ start: 0, count: 0 }));
@@ -110,7 +95,6 @@ export class Tracker extends DurableObject<Env> {
     );
     void ctx.blockConcurrencyWhile(async () => {
       await migrate(this.db, migrations);
-      await this.moveFromD1();
     });
   }
 
@@ -512,63 +496,5 @@ export class Tracker extends DurableObject<Env> {
         socket.send(CHANGED);
       } catch {}
     }
-  }
-
-  private counts() {
-    return {
-      applications: this.db.select({ total: count() }).from(applications).get()!
-        .total,
-      events: this.db.select({ total: count() }).from(applicationEvents).get()!
-        .total,
-    };
-  }
-
-  private legacyDatabase() {
-    const owners = JSON.parse(this.env.LEGACY_OWNERS ?? "{}") as Record<
-      string,
-      string
-    >;
-    const binding = Object.entries(owners).find(
-      ([email]) => email.toLowerCase() === this.ctx.id.name,
-    )?.[1];
-    return binding === "JAREN_D1" || binding === "MAKAYLA_D1"
-      ? this.env[binding]
-      : undefined;
-  }
-
-  private async moveFromD1() {
-    const source = this.legacyDatabase();
-    if (!source || this.ctx.storage.kv.get(MOVED_FROM_D1)) return;
-    const [legacyApplications, legacyEvents] = await source.batch<
-      Record<string, SqlStorageValue>
-    >([
-      source.prepare("SELECT * FROM applications"),
-      source.prepare("SELECT * FROM application_events"),
-    ]);
-    const moved = {
-      applications: legacyApplications.results.length,
-      events: legacyEvents.results.length,
-    };
-    this.ctx.storage.transactionSync(() => {
-      const before = this.counts();
-      copyRows(
-        this.ctx.storage.sql,
-        "applications",
-        legacyApplications.results,
-      );
-      copyRows(
-        this.ctx.storage.sql,
-        "application_events",
-        legacyEvents.results,
-      );
-      const after = this.counts();
-      if (
-        after.applications !== before.applications + moved.applications ||
-        after.events !== before.events + moved.events
-      )
-        throw new Error("Row counts after the D1 move do not match.");
-      this.ctx.storage.kv.put(MOVED_FROM_D1, { ...moved, at: Date.now() });
-    });
-    console.log(JSON.stringify({ movedFromD1: moved }));
   }
 }
