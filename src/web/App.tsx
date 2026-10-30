@@ -3,9 +3,11 @@ import {
   FileTextIcon,
   PlugIcon,
   PlusIcon,
+  UsersIcon,
   XIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { me } from "@/web/api";
 import { cn } from "cn";
 import {
   Alert,
@@ -19,12 +21,14 @@ import { useOpenApplication, usePage, type Page } from "./router";
 import { useApplications } from "./use-applications";
 import { Applications } from "./views/Applications";
 import { Connect } from "./views/Connect";
+import { People } from "./views/People";
 import { ResumePage } from "./views/ResumePage";
 
 const PAGES: { page: Page; label: string; Icon: typeof PlusIcon }[] = [
   { page: "applications", label: "Applications", Icon: BriefcaseIcon },
   { page: "resume", label: "Resume", Icon: FileTextIcon },
   { page: "connect", label: "Connect", Icon: PlugIcon },
+  { page: "people", label: "People", Icon: UsersIcon },
 ];
 
 export function App() {
@@ -32,6 +36,15 @@ export function App() {
   const sheet = useOpenApplication();
   const { page, go } = usePage();
   const [adding, setAdding] = useState(false);
+  const [admin, setAdmin] = useState(false);
+
+  useEffect(() => {
+    me()
+      .then((user) => setAdmin(user.admin))
+      .catch(() => setAdmin(false));
+  }, []);
+
+  const pages = PAGES.filter((item) => admin || item.page !== "people");
 
   return (
     <div className="dark app">
@@ -46,10 +59,10 @@ export function App() {
           <span>Job Search</span>
         </button>
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-1 border-t bg-background px-(--gutter) pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] sm:static sm:ml-8 sm:flex sm:border-0 sm:p-0"
+          className="fixed inset-x-0 bottom-0 z-20 grid auto-cols-fr grid-flow-col gap-1 border-t bg-background px-(--gutter) pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] sm:static sm:ml-8 sm:flex sm:border-0 sm:p-0"
           aria-label="Main"
         >
-          {PAGES.map(({ page: item, label, Icon }) => (
+          {pages.map(({ page: item, label, Icon }) => (
             <Button
               key={item}
               variant={page === item ? "secondary" : "ghost"}
@@ -95,6 +108,8 @@ export function App() {
         )}
         {page === "resume" ? (
           <ResumePage />
+        ) : page === "people" && admin ? (
+          <People />
         ) : page === "connect" ? (
           <Connect />
         ) : (

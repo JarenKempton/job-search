@@ -4,6 +4,8 @@ import { applicationRoutes } from "./applications/routes";
 import { utcToday } from "./applications/status";
 import type { AppEnv, Env } from "./env";
 import { requireAccess } from "./lib/cloudflare-access";
+import { directory } from "./people/directory";
+import { peopleRoutes } from "./people/routes";
 import { ApiError, errorResponse, json } from "./lib/http";
 import { normalizeError } from "./lib/normalize-error";
 import { jobSearchServer, unwrap } from "./mcp/tools";
@@ -19,7 +21,19 @@ const SECURITY_HEADERS = {
   "x-robots-tag": "noindex, nofollow",
 };
 
+export { Directory } from "./people/directory";
 export { Tracker } from "./tracker";
+
+const recorded = new Map<string, string>();
+
+async function recordVisit(env: Env, email: string) {
+  const today = utcToday();
+  if (recorded.get(email) === today) return;
+  recorded.set(email, today);
+  await directory(env)
+    .seen(email, today)
+    .catch(() => recorded.delete(email));
+}
 
 const app = new Hono<AppEnv>();
 app.use(async (context, next) => {
@@ -42,10 +56,13 @@ app.use(async (context, next) => {
       },
       { status: 429, headers: { "retry-after": String(wait) } },
     );
+  await recordVisit(context.env, email);
   context.set("tracker", tracker);
+  context.set("email", email);
   await next();
 });
 app.route("/", applicationRoutes);
+app.route("/", peopleRoutes);
 app.all("/mcp", async (context) => {
   const assertion = context.req.header("cf-access-jwt-assertion");
   const call = async (path: string, method = "GET", body?: unknown) =>

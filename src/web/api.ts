@@ -85,6 +85,35 @@ export const resume = {
     api<{ removed: boolean }>("/api/v1/resume", { method: "DELETE" }),
 };
 
+export type Person = {
+  email: string;
+  member: boolean;
+  firstSeen: string | null;
+  lastSeen: string | null;
+};
+export type PeopleList = {
+  configured: boolean;
+  people: Person[];
+  invited?: boolean;
+};
+
+export const me = () => api<{ email: string; admin: boolean }>("/api/v1/me");
+
+export const people = {
+  list: () => api<PeopleList>("/api/v1/people"),
+  add: (email: string) =>
+    api<PeopleList>("/api/v1/people", send("POST", { email })),
+  invite: (email: string) =>
+    api<PeopleList>(
+      `/api/v1/people/${encodeURIComponent(email)}/invite`,
+      send("POST", {}),
+    ),
+  remove: (email: string) =>
+    api<PeopleList>(`/api/v1/people/${encodeURIComponent(email)}`, {
+      method: "DELETE",
+    }),
+};
+
 export type MatchScoreStatus = {
   enabled: boolean;
   usedToday: number;
