@@ -14,9 +14,14 @@ export const groupConfigured = (env: Env) =>
     env.CLOUDFLARE_ACCOUNT_ID && env.ACCESS_GROUP_ID && env.ACCESS_GROUPS_TOKEN,
   );
 
-async function request(env: Env, method: "GET" | "PUT", body?: Group) {
+async function access<T>(
+  env: Env,
+  path: string,
+  method: "GET" | "PUT" | "POST",
+  body?: unknown,
+) {
   const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/access/groups/${env.ACCESS_GROUP_ID}`,
+    `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/access/${path}`,
     {
       method,
       headers: {
@@ -28,16 +33,28 @@ async function request(env: Env, method: "GET" | "PUT", body?: Group) {
   );
   const payload = (await response.json().catch(() => ({}))) as {
     success?: boolean;
-    result?: Group;
+    result?: T;
     errors?: { message: string }[];
   };
-  if (!response.ok || !payload.success || !payload.result)
+  if (!response.ok || !payload.success || payload.result === undefined)
     throw new ApiError(
       502,
       "access_group_failed",
       `Cloudflare Access didn't accept the change: ${payload.errors?.[0]?.message ?? response.status}`,
     );
   return payload.result;
+}
+
+const request = (env: Env, method: "GET" | "PUT", body?: Group) =>
+  access<Group>(env, `groups/${env.ACCESS_GROUP_ID}`, method, body);
+
+export async function revokeSessions(env: Env, email: string) {
+  try {
+    await access(env, "organizations/revoke_user", "POST", { email });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const emailsIn = (group: Group) =>

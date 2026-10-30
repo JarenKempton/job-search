@@ -38,6 +38,12 @@ export function People() {
             ? `Invite sent to ${email}.`
             : `${email} can sign in, but the invite email didn't send.`,
         );
+      if (email && next.signedOut !== undefined)
+        setNotice(
+          next.signedOut
+            ? `Removed ${email} and signed them out.`
+            : `Removed ${email}. They couldn't be signed out, so they lose access within a day.`,
+        );
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -55,7 +61,7 @@ export function People() {
 
   const remove = (person: Person) => {
     if (window.confirm(`Remove ${person.email}? Their saved jobs stay.`))
-      void run(() => api.remove(person.email));
+      void run(() => api.remove(person.email), person.email);
   };
 
   return (

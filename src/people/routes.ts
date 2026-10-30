@@ -2,7 +2,12 @@ import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { AppEnv, Env } from "../env";
 import { ApiError, ok, readJson } from "../lib/http";
-import { changeGroup, groupConfigured, groupEmails } from "./access-group";
+import {
+  changeGroup,
+  groupConfigured,
+  groupEmails,
+  revokeSessions,
+} from "./access-group";
 import { directory } from "./directory";
 import { sendInvite } from "./invite";
 
@@ -103,5 +108,9 @@ export const peopleRoutes = new Hono<AppEnv>()
     const members = await changeGroup(context.env, (emails) =>
       emails.filter((member) => member !== email),
     );
-    return ok({ configured: true, people: await people(context.env, members) });
+    return ok({
+      configured: true,
+      people: await people(context.env, members),
+      signedOut: await revokeSessions(context.env, email),
+    });
   });

@@ -95,6 +95,7 @@ export type PeopleList = {
   configured: boolean;
   people: Person[];
   invited?: boolean;
+  signedOut?: boolean;
 };
 
 export const me = () => api<{ email: string; admin: boolean }>("/api/v1/me");

@@ -99,8 +99,16 @@ describe("people", () => {
       "Bearer token",
     );
 
-    await asOwner("/api/v1/people/makayla%40example.test", {
-      method: "DELETE",
+    const removed = await data<{ signedOut: boolean }>(
+      await asOwner("/api/v1/people/makayla%40example.test", {
+        method: "DELETE",
+      }),
+    );
+    expect(removed.signedOut).toBe(true);
+    const revoke = cloudflare.fetch.mock.calls.at(-1)!;
+    expect(String(revoke[0])).toContain("/access/organizations/revoke_user");
+    expect(JSON.parse(String(revoke[1]?.body))).toEqual({
+      email: "makayla@example.test",
     });
     expect(cloudflare.group().include).toEqual([
       { email_domain: { domain: "example.org" } },
