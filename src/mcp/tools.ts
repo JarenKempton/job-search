@@ -367,7 +367,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "score_jobs",
     {
       description:
-        "Score how well the applicant's saved resume matches up to 10 job postings at once, 0-100 each, using Cloudflare's Clef decision model. When looking for jobs, score every posting you find instead of filtering by your own judgment, then search for more jobs like the highest scorers using their titles and the skills that matched (the skills, experience and domain parts show why). Pass applicationId to save a score as that application's resume match. Contact details are removed from the resume first. Scores are limited per day and the applicant can turn them off on the Resume page; the result says how many are used.",
+        "Score how well the applicant's saved resume matches up to 10 job postings at once, 0-100 each, using Cloudflare's Clef decision model. When looking for jobs, score every posting you find instead of filtering by your own judgment, then search for more jobs like the highest scorers using their titles and the skills that matched (the skills, experience and domain parts show why). Scoring doesn't add anything to the tracker; only add jobs the applicant picks. Pass applicationId to save a score as that application's resume match. Contact details are removed from the resume first. Scores are limited per day and the applicant can turn them off on the Resume page; the result says how many are used.",
       annotations: { openWorldHint: true },
       inputSchema: {
         jobs: z
