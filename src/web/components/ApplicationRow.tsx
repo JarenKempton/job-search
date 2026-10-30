@@ -11,8 +11,23 @@ import {
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { Badge } from "@/web/components/ui/badge";
 import { Button } from "@/web/components/ui/button";
+import { Progress } from "@/web/components/ui/progress";
 import { TableCell, TableRow } from "@/web/components/ui/table";
 import { daysBetween, label, salaryRange, shortDate } from "@/web/format";
+
+function MatchMeter({ fit }: { fit: number }) {
+  return (
+    <div className="w-28 space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-medium tabular-nums">{fit}%</span>
+        <span className="text-xs text-muted-foreground">
+          {matchRating(fit)}
+        </span>
+      </div>
+      <Progress value={fit} aria-label={`${fit}% resume match`} />
+    </div>
+  );
+}
 
 function NextStep({ next, today }: { next: NextAction | null; today: string }) {
   if (!next) return <span className="text-muted-foreground">Closed</span>;
@@ -112,11 +127,7 @@ export function ApplicationRow({
           {(row.salaryMin != null || row.salaryMax != null) && (
             <p className="tabular-nums">{salary}</p>
           )}
-          {row.fit != null && (
-            <p className="text-muted-foreground">
-              {row.fit}% resume match · {matchRating(row.fit)}
-            </p>
-          )}
+          {row.fit != null && <MatchMeter fit={row.fit} />}
           <NextStep next={next} today={today} />
         </div>
         <div className="max-w-40 pt-2 sm:hidden">{interest}</div>
@@ -139,12 +150,7 @@ export function ApplicationRow({
             —
           </span>
         ) : (
-          <>
-            {row.fit}%{" "}
-            <span className="text-xs text-muted-foreground">
-              {matchRating(row.fit)}
-            </span>
-          </>
+          <MatchMeter fit={row.fit} />
         )}
       </TableCell>
       <TableCell className="hidden px-4 py-3 text-sm lg:table-cell">
