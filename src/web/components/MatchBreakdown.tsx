@@ -4,7 +4,6 @@ import {
   XIcon,
   type LucideIcon,
 } from "lucide-react";
-import { matchRating } from "@/applications/fields";
 import type { Application } from "@/web/api";
 import { Badge } from "@/web/components/ui/badge";
 import { Progress } from "@/web/components/ui/progress";
@@ -28,63 +27,36 @@ const GROUPS: Array<{
   { key: "unclear", title: "Unclear", icon: CircleHelpIcon },
 ];
 
-export function MatchBreakdown({
-  fit,
-  details,
-}: {
-  fit: number;
-  details: Details | null;
-}) {
-  const groups = GROUPS.filter(({ key }) => details?.[key]?.length);
+export function MatchBreakdown({ details }: { details: Details }) {
+  const groups = GROUPS.filter(({ key }) => details[key]?.length);
   return (
-    <section aria-label="Resume match" className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-sm font-semibold">Resume match</h3>
-        <p className="tabular flex items-center gap-2">
-          <span className="text-lg font-semibold">{fit}%</span>
-          <Badge variant="secondary">{matchRating(fit)}</Badge>
-        </p>
-      </div>
-      {!details && (
-        <>
-          <Progress value={fit} aria-label="Resume match" />
-          <p className="text-xs text-muted-foreground">
-            Entered by hand. Score it with your AI for a breakdown.
-          </p>
-        </>
-      )}
-      {details && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {PARTS.map(({ key, title }) => (
-            <div key={key} className="space-y-1.5">
-              <div className="flex justify-between text-xs">
-                <dt className="text-muted-foreground">{title}</dt>
-                <dd className="tabular font-medium">
-                  {details[key] as number}
-                </dd>
-              </div>
-              <Progress value={details[key] as number} aria-label={title} />
+    <section aria-label="Match breakdown" className="space-y-4">
+      <h3 className="text-sm font-semibold">Match breakdown</h3>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+        {PARTS.map(({ key, title }) => (
+          <div key={key} className="space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <dt className="text-muted-foreground">{title}</dt>
+              <dd className="tabular font-medium">{details[key] as number}</dd>
             </div>
-          ))}
-        </dl>
-      )}
-      {details && groups.length > 0 && (
-        <dl className="divide-y divide-border">
+            <Progress value={details[key] as number} aria-label={title} />
+          </div>
+        ))}
+      </dl>
+      {groups.length > 0 && (
+        <dl className="space-y-4 pt-2">
           {groups.map(({ key, title, icon: Icon }) => (
-            <div
-              key={key}
-              className="grid gap-1.5 py-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]"
-            >
-              <dt className="flex items-center gap-1.5 font-medium">
+            <div key={key} className="space-y-2">
+              <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Icon aria-hidden="true" className="size-3.5" />
-                {title}
+                {title} · {details[key].length}
               </dt>
-              <dd className="flex min-w-0 flex-wrap gap-1.5">
+              <dd className="flex flex-wrap gap-2">
                 {details[key].map((requirement) => (
                   <Badge
                     key={requirement}
-                    variant="outline"
-                    className="h-auto rounded-md text-left whitespace-normal"
+                    variant="secondary"
+                    className="h-auto rounded-md px-2.5 py-1 text-left text-sm font-normal whitespace-normal"
                   >
                     {requirement}
                   </Badge>

@@ -150,28 +150,28 @@ export function ApplicationSheet({
                 </div>
               </>
             ) : (
-              <>
-                <ApplicationSummary
-                  row={detail}
-                  onEdit={() => setEditing(true)}
-                />
-                <Timeline
-                  events={detail.events}
-                  applicationNote={detail.notes}
-                  onClearNote={async () => {
-                    await jobs.update(id, { notes: null });
-                    setForm(toForm(await reload()));
-                  }}
-                  onAdd={async (input) => {
-                    await jobs.addEvent(id, input);
-                    await reload();
-                  }}
-                  onRemove={async (eventId) => {
-                    await jobs.removeEvent(eventId);
-                    await reload();
-                  }}
-                />
-              </>
+              <ApplicationSummary
+                row={detail}
+                onEdit={() => setEditing(true)}
+                timeline={
+                  <Timeline
+                    events={detail.events}
+                    applicationNote={detail.notes}
+                    onClearNote={async () => {
+                      await jobs.update(id, { notes: null });
+                      setForm(toForm(await reload()));
+                    }}
+                    onAdd={async (input) => {
+                      await jobs.addEvent(id, input);
+                      await reload();
+                    }}
+                    onRemove={async (eventId) => {
+                      await jobs.removeEvent(eventId);
+                      await reload();
+                    }}
+                  />
+                }
+              />
             )}
           </div>
         )}

@@ -6,6 +6,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "cn";
 import {
   Alert,
   AlertAction,
@@ -45,7 +46,7 @@ export function App() {
           <span>Job Search</span>
         </button>
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-1 border-t bg-background px-(--gutter) pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] sm:static sm:ml-auto sm:flex sm:border-0 sm:p-0"
+          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-1 border-t bg-background px-(--gutter) pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] sm:static sm:ml-8 sm:flex sm:border-0 sm:p-0"
           aria-label="Main"
         >
           {PAGES.map(({ page: item, label, Icon }) => (
@@ -53,18 +54,21 @@ export function App() {
               key={item}
               variant={page === item ? "secondary" : "ghost"}
               size="sm"
-              className="max-sm:h-auto max-sm:flex-col max-sm:gap-0.5 max-sm:py-1.5 max-sm:text-[11px]"
+              className={cn(
+                "max-sm:h-auto max-sm:flex-col max-sm:gap-0.5 max-sm:py-1.5 max-sm:text-[11px]",
+                page !== item && "text-muted-foreground",
+              )}
               aria-current={page === item ? "page" : undefined}
               onClick={() => go(item)}
             >
-              <Icon className="sm:hidden" />
+              <Icon />
               {label}
             </Button>
           ))}
         </nav>
         <Button
           size="sm"
-          className="sm:ml-2"
+          className="sm:ml-auto"
           aria-label="Add job"
           onClick={() => setAdding(true)}
         >

@@ -504,8 +504,6 @@
 .timeline {
   display: grid;
   gap: 14px;
-  padding-block: 16px;
-  border-block: 1px solid var(--border);
 }
 .timeline-heading,
 .event-heading {

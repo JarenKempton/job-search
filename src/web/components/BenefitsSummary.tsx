@@ -110,9 +110,6 @@ export function BenefitsSummary({ row }: { row: BenefitsRow }) {
   return (
     <section aria-label="Benefits" className="space-y-3">
       <h3 className="text-sm font-semibold">Benefits</h3>
-      <p className="text-xs text-muted-foreground">
-        Recorded policy details. Unlisted information remains unknown.
-      </p>
       <dl className="divide-y divide-border">
         {groups.map(({ key, title }) => {
           const group = row.benefits![key]!;
