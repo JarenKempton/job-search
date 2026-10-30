@@ -102,3 +102,23 @@ export type ResumeInput = z.infer<typeof resumeSchema>;
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+export const matchSettingsSchema = z.object({ enabled: z.boolean() });
+
+export const scoreJobsSchema = z.object({
+  jobs: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(200),
+        posting: z
+          .string()
+          .trim()
+          .min(50, "Paste the full job posting.")
+          .max(30_000),
+        applicationId: z.uuid().nullable().optional(),
+      }),
+    )
+    .min(1)
+    .max(10),
+  today: day.optional(),
+});

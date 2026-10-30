@@ -81,3 +81,18 @@ export const resume = {
   remove: () =>
     api<{ removed: boolean }>("/api/v1/resume", { method: "DELETE" }),
 };
+
+export type MatchScoreStatus = {
+  enabled: boolean;
+  usedToday: number;
+  dailyLimit: number;
+};
+
+export const matchScores = {
+  get: () => api<MatchScoreStatus>("/api/v1/match-scores/settings"),
+  set: (enabled: boolean) =>
+    api<MatchScoreStatus>(
+      "/api/v1/match-scores/settings",
+      send("PUT", { enabled }),
+    ),
+};
