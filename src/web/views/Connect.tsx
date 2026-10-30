@@ -100,9 +100,9 @@ export function Connect() {
           {PROMPTS.map((prompt) => (
             <div
               key={prompt.title}
-              className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+              className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
             >
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium">{prompt.title}</p>
                 <p className="text-xs text-muted-foreground">{prompt.hint}</p>
               </div>
@@ -122,6 +122,7 @@ function CopyPrompt({ label, text }: { label: string; text: string }) {
       type="button"
       variant="outline"
       size="sm"
+      className="shrink-0"
       aria-label={`Copy ${label}`}
       title={text}
       onClick={async () => {
