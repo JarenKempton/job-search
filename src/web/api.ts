@@ -14,7 +14,7 @@ export type Resume = Json<ResumeRow>;
 export type ApplicationDetail = Application & { events: ApplicationEvent[] };
 export type ApplicationInput = Omit<
   Application,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt" | "fitDetails"
 >;
 export type ApplicationUpdate = Partial<Omit<ApplicationInput, "benefits">> & {
   benefits?: BenefitsPatch | null;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { matchRating } from "@/applications/fields";
 import type { Application } from "@/web/api";
 import { InterestSelect } from "@/web/components/InterestSelect";
 import {
@@ -112,7 +113,9 @@ export function ApplicationRow({
             <p className="tabular-nums">{salary}</p>
           )}
           {row.fit != null && (
-            <p className="text-muted-foreground">{row.fit}% resume match</p>
+            <p className="text-muted-foreground">
+              {row.fit}% resume match · {matchRating(row.fit)}
+            </p>
           )}
           <NextStep next={next} today={today} />
         </div>
@@ -136,7 +139,12 @@ export function ApplicationRow({
             —
           </span>
         ) : (
-          `${row.fit}%`
+          <>
+            {row.fit}%{" "}
+            <span className="text-xs text-muted-foreground">
+              {matchRating(row.fit)}
+            </span>
+          </>
         )}
       </TableCell>
       <TableCell className="hidden px-4 py-3 text-sm lg:table-cell">

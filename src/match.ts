@@ -159,7 +159,7 @@ export function combine({ answers }: ClefResponse): JobMatch {
     .map((dimension) => answers[dimension].confidence)
     .filter((value): value is number => value !== null);
   return {
-    match: Math.round(100 * weighted * (0.5 + 0.5 * hard)),
+    match: Math.round(100 * weighted * (0.75 + 0.25 * hard)),
     skills: Math.round(100 * percent("skills")),
     experience: Math.round(100 * percent("experience")),
     domain: Math.round(100 * percent("domain")),

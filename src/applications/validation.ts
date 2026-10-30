@@ -113,7 +113,7 @@ export const scoreJobsSchema = z.object({
         posting: z
           .string()
           .trim()
-          .min(50, "Paste the full job posting.")
+          .min(400, "Send the full job posting, not a summary.")
           .max(30_000),
         applicationId: z.uuid().nullable().optional(),
       }),

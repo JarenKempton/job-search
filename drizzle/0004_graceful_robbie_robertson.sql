@@ -1,0 +1,1 @@
+ALTER TABLE `applications` ADD `fit_details` text;

@@ -17,7 +17,7 @@ const FIND_PROMPT = `Find jobs that fit my resume, using my Job Search tracker:
 3. Score every posting with score_jobs, up to 10 at a time. Don't filter them yourself first.
 4. Search for more jobs like the three highest scorers, using their titles and the skills that matched, and score those too.
 5. Show me a table: company, role, score, why it fits, and the link. Don't add anything to my tracker yet.
-6. Ask which ones I want. Add only those with add_application and their score as the resume match: status saved, or applied with today's date if I say I applied.`;
+6. Ask which ones I want. Add only those with add_application (status saved, or applied with today's date if I say I applied), then call score_jobs again with their applicationId and full posting so the score, its breakdown and the posting are saved.`;
 
 const PROMPTS = [
   {

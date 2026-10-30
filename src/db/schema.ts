@@ -1,5 +1,6 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { Benefits } from "../applications/benefits";
+import type { JobMatch } from "../match";
 import type {
   ApplyMethod,
   EmploymentType,
@@ -32,6 +33,7 @@ export const applications = sqliteTable(
     salaryMax: integer("salary_max"),
     yearsRequired: integer("years_required"),
     fit: integer("fit"),
+    fitDetails: text("fit_details", { mode: "json" }).$type<FitDetails>(),
     interest: integer("interest"),
     status: text("status").$type<Status>().notNull().default("saved"),
     appliedOn: text("applied_on"),
@@ -84,6 +86,7 @@ export const resumes = sqliteTable("resumes", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+export type FitDetails = Omit<JobMatch, "match"> & { scoredAt: string };
 export type Application = typeof applications.$inferSelect;
 export type Resume = typeof resumes.$inferSelect;
 export type ApplicationEvent = typeof applicationEvents.$inferSelect;

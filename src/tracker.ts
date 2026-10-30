@@ -3,7 +3,7 @@ import { asc, count, desc, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/durable-sqlite/migrator";
 import migrations from "../drizzle/migrations.js";
 import { mergeBenefits } from "./applications/benefits";
-import type { Status } from "./applications/fields";
+import { matchRating, type Status } from "./applications/fields";
 import { datesForStatus, statusNote, utcToday } from "./applications/status";
 import type {
   CreateApplicationInput,
@@ -14,12 +14,13 @@ import type {
 import { database, type Database } from "./db/client";
 import { applicationEvents, applications, resumes } from "./db/schema";
 import type { Env } from "./env";
-import { askClef, DAILY_SCORES } from "./match";
+import { askClef, DAILY_SCORES, type JobMatch } from "./match";
 
 const CHANGED = JSON.stringify({ type: "changed" });
 const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
 const MATCH_SCORES = "matchScores";
+const SCORE_CACHE = "scoreCache";
 
 type MatchSettings = { enabled: boolean; day: string; used: number };
 type JobToScore = {
@@ -27,6 +28,16 @@ type JobToScore = {
   posting: string;
   applicationId?: string | null;
 };
+
+async function scoreKey(resume: string, posting: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${resume}\n\u0000\n${posting}`),
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 const failure = (status: number, code: string, message: string) => ({
   failure: { status, code, message },
@@ -196,6 +207,7 @@ export class Tracker extends DurableObject<Env> {
         .update(applications)
         .set({
           ...changes,
+          ...(changes.fit !== undefined ? { fitDetails: null } : {}),
           benefits: merged.data,
           ...dates,
           updatedAt: new Date(),
@@ -298,9 +310,8 @@ export class Tracker extends DurableObject<Env> {
     return this.matchScores();
   }
 
-  async scoreJobs(jobs: JobToScore[], today: string) {
-    const settings = this.matchSettings();
-    if (!settings.enabled)
+  async scoreJobs(jobs: JobToScore[]) {
+    if (!this.matchSettings().enabled)
       return failure(
         403,
         "match_scores_off",
@@ -313,17 +324,23 @@ export class Tracker extends DurableObject<Env> {
         "no_resume",
         "No resume is saved. Ask the person to add one on the Resume page, or call save_resume with resume text they give you, then try again.",
       );
-    const remaining = DAILY_SCORES - settings.used;
-    if (remaining <= 0)
+    const keys = await Promise.all(
+      jobs.map((job) => scoreKey(resume.text, job.posting)),
+    );
+    const settings = this.matchSettings();
+    const known = this.scoreCache(settings.day);
+    const scorable = jobs.filter(
+      (job) => !job.applicationId || this.application(job.applicationId),
+    );
+    const fresh = scorable.filter((job) => !known[keys[jobs.indexOf(job)]]);
+    const remaining = Math.max(0, DAILY_SCORES - settings.used);
+    if (fresh.length && !remaining && fresh.length === scorable.length)
       return failure(
         429,
         "match_score_daily_limit",
         `All ${DAILY_SCORES} of today's match scores are used; they reset at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank.`,
       );
-    const scorable = jobs.filter(
-      (job) => !job.applicationId || this.application(job.applicationId),
-    );
-    const toScore = scorable.slice(0, remaining);
+    const toScore = fresh.slice(0, remaining);
     this.ctx.storage.kv.put(MATCH_SCORES, {
       ...settings,
       used: settings.used + toScore.length,
@@ -334,43 +351,47 @@ export class Tracker extends DurableObject<Env> {
         result: await askClef(this.env.AI, resume.text, job.posting),
       })),
     );
-    const failed = scored.filter(({ result }) => "error" in result).length;
     const now = this.matchSettings();
-    if (failed && now.day === settings.day)
-      this.ctx.storage.kv.put(MATCH_SCORES, {
-        ...now,
-        used: Math.max(0, now.used - failed),
-      });
-    const results = jobs.map((job) => {
+    if (now.day === settings.day) {
+      const failed = scored.filter(({ result }) => "error" in result).length;
+      if (failed)
+        this.ctx.storage.kv.put(MATCH_SCORES, {
+          ...now,
+          used: Math.max(0, now.used - failed),
+        });
+      const cache = this.scoreCache(now.day);
+      for (const { job, result } of scored)
+        if (result.match) cache[keys[jobs.indexOf(job)]] = result.match;
+      this.ctx.storage.kv.put(SCORE_CACHE, { day: now.day, scores: cache });
+    }
+    const results = jobs.map((job, index) => {
       const label = job.label;
       if (!scorable.includes(job))
         return { label, error: "Application not found. Check the id." };
-      const done = scored.find((entry) => entry.job === job);
-      if (!done)
+      const done = scored.find((entry) => entry.job === job)?.result;
+      const match = known[keys[index]] ?? done?.match ?? null;
+      if (!match && !done)
         return {
           label,
           error: `Not scored: today's ${DAILY_SCORES} match scores ran out. Don't estimate a match yourself; leave the resume match blank.`,
         };
-      if ("error" in done.result)
+      if (!match)
         return {
           label,
           error:
-            done.result.error === "allowance"
+            done && "error" in done && done.error === "allowance"
               ? "Not scored: today's shared allowance for match scores is used up; it resets at midnight UTC. Don't call score_jobs again today. Don't estimate a match yourself; leave the resume match blank."
               : "This posting couldn't be scored. Don't retry it. Don't estimate a match yourself; leave the resume match blank.",
         };
       const saved =
         !job.applicationId ||
-        this.update(job.applicationId, { fit: done.result.match.match }, today);
+        this.saveScore(job.applicationId, match, job.posting);
+      const outcome = { ...match, rating: matchRating(match.match) };
       return saved
-        ? {
-            label,
-            applicationId: job.applicationId ?? null,
-            ...done.result.match,
-          }
+        ? { label, applicationId: job.applicationId ?? null, ...outcome }
         : {
             label,
-            ...done.result.match,
+            ...outcome,
             error:
               "Scored, but the application was deleted before the score could be saved.",
           };
@@ -402,6 +423,33 @@ export class Tracker extends DurableObject<Env> {
     return saved?.day === today
       ? { enabled, day: today, used: saved.used }
       : { enabled, day: today, used: 0 };
+  }
+
+  private saveScore(id: string, scored: JobMatch, posting: string) {
+    const existing = this.application(id);
+    if (!existing) return false;
+    const { match, ...details } = scored;
+    this.db
+      .update(applications)
+      .set({
+        fit: match,
+        fitDetails: { ...details, scoredAt: new Date().toISOString() },
+        ...((existing.description?.length ?? 0) < posting.length
+          ? { description: posting }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(applications.id, id))
+      .run();
+    return true;
+  }
+
+  private scoreCache(day: string): Record<string, JobMatch> {
+    const saved = this.ctx.storage.kv.get<{
+      day: string;
+      scores: Record<string, JobMatch>;
+    }>(SCORE_CACHE);
+    return saved?.day === day ? { ...saved.scores } : {};
   }
 
   private changed() {
