@@ -20,7 +20,7 @@ const MOVED_FROM_D1 = "movedFromD1";
 const RESUME = "current";
 const LIMITS = [
   { windowMs: 60_000, max: 120 },
-  { windowMs: 86_400_000, max: 2_000 },
+  { windowMs: 86_400_000, max: 10_000 },
 ];
 
 type NewApplication = Omit<CreateApplicationInput, "today">;
@@ -78,12 +78,13 @@ export class Tracker extends DurableObject<Env> {
       const window = this.windows[index];
       if (now - window.start >= windowMs)
         Object.assign(window, { start: now, count: 0 });
-      if (++window.count > max)
+      if (window.count >= max)
         wait = Math.max(
           wait,
           Math.ceil((window.start + windowMs - now) / 1000),
         );
     });
+    if (!wait) for (const window of this.windows) window.count++;
     return wait;
   }
 
