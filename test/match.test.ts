@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { combine, MATCH_MODEL, redact } from "../src/match";
+import { combine, DAILY_SCORES, MATCH_MODEL, redact } from "../src/match";
 import { call, data, rpc } from "./helpers";
 
 const RESUME = `Alex Rivera
@@ -161,7 +161,7 @@ describe("match scores", () => {
     expect(await data(await call("/api/v1/match-scores/settings"))).toEqual({
       enabled: true,
       usedToday: 0,
-      dailyLimit: 60,
+      dailyLimit: DAILY_SCORES,
     });
     expect((await score()).status).toBe(409);
     await call("/api/v1/match-scores/settings", {
@@ -187,7 +187,7 @@ describe("match scores", () => {
       }),
     );
     const result = await data<Scored>(await score([{ applicationId: id }]));
-    expect(result).toMatchObject({ usedToday: 1, dailyLimit: 60 });
+    expect(result).toMatchObject({ usedToday: 1, dailyLimit: DAILY_SCORES });
     const [model, input] = clef.mock.calls[0] as unknown as [
       string,
       { model: string; state: { resume: string; job_posting: string } },
@@ -207,7 +207,7 @@ describe("match scores", () => {
     await turnOn();
     await runInDurableObject(tracker(), (_, state) => {
       const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
-      state.storage.kv.put("matchScores", { ...saved, used: 60 });
+      state.storage.kv.put("matchScores", { ...saved, used: DAILY_SCORES });
     });
     const limited = await score([{}], "2001-01-01");
     expect(limited.status).toBe(429);
@@ -219,7 +219,7 @@ describe("match scores", () => {
     await turnOn();
     await runInDurableObject(tracker(), (_, state) => {
       const saved = state.storage.kv.get<{ day: string }>("matchScores")!;
-      state.storage.kv.put("matchScores", { ...saved, used: 58 });
+      state.storage.kv.put("matchScores", { ...saved, used: DAILY_SCORES - 2 });
     });
     const { results, usedToday } = await data<Scored>(
       await score([
@@ -230,7 +230,7 @@ describe("match scores", () => {
       ]),
     );
     expect(clef).toHaveBeenCalledTimes(2);
-    expect(usedToday).toBe(60);
+    expect(usedToday).toBe(DAILY_SCORES);
     expect(results.map((result) => result.label)).toEqual([
       "Job 1",
       "Job 2",

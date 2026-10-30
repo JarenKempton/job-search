@@ -1,4 +1,4 @@
-export const DAILY_SCORES = 60;
+export const DAILY_SCORES = 100;
 export const MATCH_MODEL = "@cf/cloudflare/clef";
 
 const LEVELS = {
