@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { call, data, rpc, signedInAs } from "./helpers";
 
 const alice = signedInAs("alice@example.test");

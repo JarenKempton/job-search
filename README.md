@@ -64,7 +64,8 @@ flowchart LR
 | Runtime    | Cloudflare Workers, Durable Objects (SQLite), Workers AI, AI Gateway, Email Service                    |
 | API        | [Hono](https://hono.dev), [Zod](https://zod.dev), [jose](https://github.com/panva/jose) for JWT checks |
 | Data       | [Drizzle ORM](https://orm.drizzle.team) with generated SQL migrations                                  |
-| Web        | React 19, Vite, Tailwind CSS 4, [shadcn/ui](https://ui.shadcn.com)                                     |
+| Web        | React 19, Tailwind CSS 4, [shadcn/ui](https://ui.shadcn.com)                                           |
+| Toolchain  | [Vite+](https://viteplus.dev): Vite 8 with Rolldown, Vitest 5, Oxfmt and Oxlint                        |
 | AI clients | [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)                           |
 | Tests      | Vitest inside the Workers runtime via `@cloudflare/vitest-plugin`                                      |
 
@@ -86,7 +87,7 @@ test/                  Vitest suites, run in workerd
 
 ## Run it locally
 
-Requires Node 22 and pnpm 10.
+Requires Node 22.18+ or 24.11+ and pnpm 10.
 
 ```sh
 pnpm install
@@ -98,7 +99,7 @@ Wrangler mocks Cloudflare Access locally, so you're signed in as `developer@loca
 ## Checks
 
 ```sh
-pnpm format:check && pnpm check && pnpm test && pnpm deploy:check
+pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm deploy:check
 ```
 
 CI runs the same steps on every pull request, and also fails if `src/db/schema.ts` changed without a generated migration.

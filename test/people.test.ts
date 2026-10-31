@@ -1,5 +1,5 @@
 import { env, runInDurableObject } from "cloudflare:test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import type { Env } from "../src/env";
 import { DAILY_SCORES } from "../src/match";
 import worker from "../src/worker";
