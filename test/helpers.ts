@@ -1,5 +1,5 @@
 import { env } from "cloudflare:test";
-import { expect } from "vitest";
+import { expect } from "vite-plus/test";
 import type { Env } from "../src/env";
 import worker from "../src/worker";
 

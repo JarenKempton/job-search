@@ -1,6 +1,6 @@
 import { env } from "cloudflare:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { call, data, rpc, signedInAs } from "./helpers";
 
 const noBinding = {} as ExecutionContext;

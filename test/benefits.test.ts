@@ -1,5 +1,5 @@
 import { env, evictDurableObject } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Application } from "../src/web/api";
 import { toForm, toInput } from "../src/web/components/form-state";
 import { call, data, rpc } from "./helpers";

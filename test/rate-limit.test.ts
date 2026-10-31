@@ -1,5 +1,5 @@
 import { env, runInDurableObject } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { call, rpc, signedInAs } from "./helpers";
 
 const busy = signedInAs("busy@example.test");
