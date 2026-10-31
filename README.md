@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.svg" width="72" height="72" alt="">
+  <img src="public/favicon.svg" width="80" height="80" alt="">
 </p>
 
 <h1 align="center">Job Search</h1>
@@ -7,6 +7,22 @@
 <p align="center">
   A private job-application tracker that your AI assistant can work in too.<br>
   One Cloudflare Worker, one SQLite database per person, sign-in by Cloudflare Access.
+</p>
+
+<p align="center">
+  <a href="https://github.com/JarenKempton/job-search/actions/workflows/ci.yml"><img src="https://github.com/JarenKempton/job-search/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?logo=cloudflareworkers&logoColor=white" alt="Cloudflare Workers">
+  <img src="https://img.shields.io/badge/Durable_Objects-F38020?logo=cloudflare&logoColor=white" alt="Durable Objects">
+  <img src="https://img.shields.io/badge/Hono-E36002?logo=hono&logoColor=white" alt="Hono">
+  <img src="https://img.shields.io/badge/Drizzle-C5F74F?logo=drizzle&logoColor=black" alt="Drizzle ORM">
+  <br>
+  <img src="https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB" alt="React 19">
+  <img src="https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4">
+  <img src="https://img.shields.io/badge/shadcn%2Fui-000000?logo=shadcnui&logoColor=white" alt="shadcn/ui">
+  <img src="https://img.shields.io/badge/MCP-000000?logo=modelcontextprotocol&logoColor=white" alt="Model Context Protocol">
+  <img src="https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white" alt="Vitest">
 </p>
 
 <p align="center">

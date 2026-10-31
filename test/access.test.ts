@@ -37,7 +37,7 @@ describe("access", () => {
   });
 
   it("refuses a service token, which carries no email", async () => {
-    const token = await accessJwt({ common_name: "bb2fd392.access" });
+    const token = await accessJwt({ common_name: "test-client.access" });
     const response = await call(
       "/api/v1/applications",
       { headers: { "cf-access-jwt-assertion": token } },
