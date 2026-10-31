@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { rpc } from "./helpers";
 
 function toolCall(name: string, args: Record<string, unknown>) {
