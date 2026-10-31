@@ -50,22 +50,23 @@ afterEach(() => {
   send.mockClear();
 });
 
-describe("people", () => {
+describe("admin", () => {
   it("only lets admins manage people", async () => {
     expect(await data(await call("/api/v1/me"))).toEqual({
       email: "jaren@example.test",
       admin: false,
     });
     for (const [method, path] of [
-      ["GET", "/api/v1/people"],
-      ["POST", "/api/v1/people"],
-      ["PATCH", "/api/v1/people/avery%40example.test"],
-      ["DELETE", "/api/v1/people/avery%40example.test"],
-      ["POST", "/api/v1/people/avery%40example.test/invite"],
-      ["POST", "/api/v1/people/avery%40example.test/reset"],
-      ["POST", "/api/v1/people/avery%40example.test/extra"],
-      ["GET", "/api/v1/ai-usage"],
-      ["PUT", "/api/v1/ai-usage"],
+      ["GET", "/api/v1/admin/people"],
+      ["POST", "/api/v1/admin/people"],
+      ["PATCH", "/api/v1/admin/people/avery%40example.test"],
+      ["DELETE", "/api/v1/admin/people/avery%40example.test"],
+      ["POST", "/api/v1/admin/people/avery%40example.test/invite"],
+      ["POST", "/api/v1/admin/people/avery%40example.test/reset"],
+      ["POST", "/api/v1/admin/people/avery%40example.test/extra"],
+      ["GET", "/api/v1/admin/ai-usage"],
+      ["PUT", "/api/v1/admin/ai-usage"],
+      ["GET", "/api/v1/admin/anything-new"],
     ])
       expect(
         (await call(path, method === "GET" ? {} : { method, json: {} })).status,
@@ -81,7 +82,7 @@ describe("people", () => {
     const { configured, people } = await data<{
       configured: boolean;
       people: Person[];
-    }>(await call("/api/v1/people", {}, owner));
+    }>(await call("/api/v1/admin/people", {}, owner));
     expect(configured).toBe(false);
     expect(people).toContainEqual(
       expect.objectContaining({
@@ -95,7 +96,7 @@ describe("people", () => {
   it("adds and removes emails in the Access group, keeping other rules", async () => {
     const cloudflare = cloudflareGroup(["avery@example.test"]);
     const added = await data<{ people: Person[] }>(
-      await asOwner("/api/v1/people", {
+      await asOwner("/api/v1/admin/people", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: "New.Friend@Example.test" }),
@@ -116,7 +117,7 @@ describe("people", () => {
     );
 
     const removed = await data<{ signedOut: boolean }>(
-      await asOwner("/api/v1/people/avery%40example.test", {
+      await asOwner("/api/v1/admin/people/avery%40example.test", {
         method: "DELETE",
       }),
     );
@@ -133,7 +134,7 @@ describe("people", () => {
 
     expect(
       (
-        await asOwner("/api/v1/people/jaren.kempton%40gmail.com", {
+        await asOwner("/api/v1/admin/people/jaren.kempton%40gmail.com", {
           method: "DELETE",
         })
       ).status,
@@ -143,7 +144,7 @@ describe("people", () => {
   it("emails an invite from jobs@jarenkempton.dev with replies going to the owner", async () => {
     cloudflareGroup([]);
     const added = await data<{ invited: boolean }>(
-      await asOwner("/api/v1/people", {
+      await asOwner("/api/v1/admin/people", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: "friend@example.test" }),
@@ -168,7 +169,7 @@ describe("people", () => {
       }),
     );
     const resent = await asOwner(
-      "/api/v1/people/friend%40example.test/invite",
+      "/api/v1/admin/people/friend%40example.test/invite",
       {
         method: "POST",
       },
@@ -177,7 +178,7 @@ describe("people", () => {
     expect(await data(resent)).toMatchObject({ invited: false });
     expect(
       (
-        await asOwner("/api/v1/people/stranger%40example.test/invite", {
+        await asOwner("/api/v1/admin/people/stranger%40example.test/invite", {
           method: "POST",
         })
       ).status,
@@ -186,7 +187,7 @@ describe("people", () => {
 
   it("keeps a name for each person and greets them by it", async () => {
     cloudflareGroup([]);
-    await asOwner("/api/v1/people", {
+    await asOwner("/api/v1/admin/people", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email: "nick@example.test", name: "Nick Rivera" }),
@@ -195,7 +196,7 @@ describe("people", () => {
       expect.objectContaining({ text: expect.stringMatching(/^Hi Nick,/) }),
     );
     const renamed = await data<{ people: (Person & { name: string })[] }>(
-      await asOwner("/api/v1/people/nick%40example.test", {
+      await asOwner("/api/v1/admin/people/nick%40example.test", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Nicholas" }),
@@ -224,7 +225,7 @@ describe("people", () => {
       data<{ usedToday: number; dailyLimit: number }>(
         await call("/api/v1/match-scores/settings", {}, someone),
       );
-    await asOwner("/api/v1/people/scorer%40example.test/extra", {
+    await asOwner("/api/v1/admin/people/scorer%40example.test/extra", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ scores: 25 }),
@@ -236,7 +237,7 @@ describe("people", () => {
     const reset = await data<{
       people: { email: string; scores: { usedToday: number } | null }[];
     }>(
-      await asOwner("/api/v1/people/scorer%40example.test/reset", {
+      await asOwner("/api/v1/admin/people/scorer%40example.test/reset", {
         method: "POST",
       }),
     );
@@ -285,15 +286,15 @@ describe("people", () => {
       spentToday: number;
       freeToday: number;
       ceiling: number;
-    }>(await asOwner("/api/v1/ai-usage"));
+    }>(await asOwner("/api/v1/admin/ai-usage"));
     expect(usage.spentToday).toBeCloseTo(0.15);
     expect(usage.freeToday).toBeCloseTo(0.11);
     expect(usage.ceiling).toBe(1);
-    expect((await call("/api/v1/ai-usage")).status).toBe(403);
+    expect((await call("/api/v1/admin/ai-usage")).status).toBe(403);
 
     const setCeiling = async (body: object) =>
       data<{ ceiling: number; standardCeiling: number; raisedToday: boolean }>(
-        await asOwner("/api/v1/ai-usage", {
+        await asOwner("/api/v1/admin/ai-usage", {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
@@ -327,7 +328,7 @@ describe("people", () => {
           raisedOn: "2000-01-01",
         }),
     );
-    expect(await data(await asOwner("/api/v1/ai-usage"))).toMatchObject({
+    expect(await data(await asOwner("/api/v1/admin/ai-usage"))).toMatchObject({
       ceiling: 3,
       raisedToday: false,
     });
@@ -340,7 +341,7 @@ describe("people", () => {
         { status: 403 },
       ),
     );
-    const response = await asOwner("/api/v1/people", {
+    const response = await asOwner("/api/v1/admin/people", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email: "someone@example.test" }),

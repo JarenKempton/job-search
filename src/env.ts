@@ -1,4 +1,4 @@
-import type { Directory } from "./people/directory";
+import type { Directory } from "./admin/directory";
 import type { Tracker } from "./tracker";
 
 export interface Env {
