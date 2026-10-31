@@ -90,24 +90,22 @@ const adminOnly: MiddlewareHandler<AppEnv> = async (context, next) => {
   await next();
 };
 
-export const peopleRoutes = new Hono<AppEnv>()
+export const adminRoutes = new Hono<AppEnv>()
   .get("/api/v1/me", (context) =>
     ok({
       email: context.var.email,
       admin: isAdmin(context.env, context.var.email),
     }),
   )
-  .use("/api/v1/people", adminOnly)
-  .use("/api/v1/people/*", adminOnly)
-  .use("/api/v1/ai-usage", adminOnly)
-  .get("/api/v1/ai-usage", async (context) =>
+  .use("/api/v1/admin/*", adminOnly)
+  .get("/api/v1/admin/ai-usage", async (context) =>
     ok(
       spendConfigured(context.env)
         ? { configured: true, ...(await aiSpend(context.env)) }
         : { configured: false },
     ),
   )
-  .put("/api/v1/ai-usage", async (context) => {
+  .put("/api/v1/admin/ai-usage", async (context) => {
     if (!spendConfigured(context.env))
       throw new ApiError(
         503,
@@ -122,8 +120,10 @@ export const peopleRoutes = new Hono<AppEnv>()
       ...(await setCeiling(context.env, ceiling, scope)),
     });
   })
-  .get("/api/v1/people", async (context) => ok(await everyone(context.env)))
-  .patch("/api/v1/people/:email", async (context) => {
+  .get("/api/v1/admin/people", async (context) =>
+    ok(await everyone(context.env)),
+  )
+  .patch("/api/v1/admin/people/:email", async (context) => {
     const email = context.req.param("email").toLowerCase();
     const { name } = z
       .object({ name: nameSchema })
@@ -131,14 +131,14 @@ export const peopleRoutes = new Hono<AppEnv>()
     await directory(context.env).rename(email, name);
     return ok(await everyone(context.env));
   })
-  .post("/api/v1/people/:email/reset", async (context) => {
+  .post("/api/v1/admin/people/:email/reset", async (context) => {
     await tracker(
       context.env,
       context.req.param("email").toLowerCase(),
     ).resetMatchScores();
     return ok(await everyone(context.env));
   })
-  .post("/api/v1/people/:email/extra", async (context) => {
+  .post("/api/v1/admin/people/:email/extra", async (context) => {
     const { scores } = extraSchema.parse(await readJson(context.req.raw));
     await tracker(
       context.env,
@@ -146,7 +146,7 @@ export const peopleRoutes = new Hono<AppEnv>()
     ).allowExtraScores(scores);
     return ok(await everyone(context.env));
   })
-  .post("/api/v1/people", async (context) => {
+  .post("/api/v1/admin/people", async (context) => {
     requireGroup(context.env);
     const { email, name } = personSchema.parse(await readJson(context.req.raw));
     if (name) await directory(context.env).rename(email, name);
@@ -159,7 +159,7 @@ export const peopleRoutes = new Hono<AppEnv>()
       invited: await invite(context, email),
     });
   })
-  .post("/api/v1/people/:email/invite", async (context) => {
+  .post("/api/v1/admin/people/:email/invite", async (context) => {
     requireGroup(context.env);
     const email = context.req.param("email").toLowerCase();
     const members = await groupEmails(context.env);
@@ -171,7 +171,7 @@ export const peopleRoutes = new Hono<AppEnv>()
       invited: await invite(context, email),
     });
   })
-  .delete("/api/v1/people/:email", async (context) => {
+  .delete("/api/v1/admin/people/:email", async (context) => {
     requireGroup(context.env);
     const email = context.req.param("email").toLowerCase();
     if (email === context.var.email)

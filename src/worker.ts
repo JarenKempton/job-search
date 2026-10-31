@@ -4,9 +4,9 @@ import { applicationRoutes } from "./applications/routes";
 import { utcToday } from "./applications/status";
 import type { AppEnv, Env } from "./env";
 import { requireAccess } from "./lib/cloudflare-access";
-import { restoreStandardCeiling, spendConfigured } from "./people/ai-spend";
-import { directory } from "./people/directory";
-import { peopleRoutes } from "./people/routes";
+import { restoreStandardCeiling, spendConfigured } from "./admin/ai-spend";
+import { directory } from "./admin/directory";
+import { adminRoutes } from "./admin/routes";
 import { ApiError, errorResponse, json } from "./lib/http";
 import { normalizeError } from "./lib/normalize-error";
 import { jobSearchServer, unwrap } from "./mcp/tools";
@@ -22,7 +22,7 @@ const SECURITY_HEADERS = {
   "x-robots-tag": "noindex, nofollow",
 };
 
-export { Directory } from "./people/directory";
+export { Directory } from "./admin/directory";
 export { Tracker } from "./tracker";
 
 const recorded = new Map<string, string>();
@@ -63,7 +63,7 @@ app.use(async (context, next) => {
   await next();
 });
 app.route("/", applicationRoutes);
-app.route("/", peopleRoutes);
+app.route("/", adminRoutes);
 app.all("/mcp", async (context) => {
   const assertion = context.req.header("cf-access-jwt-assertion");
   const call = async (path: string, method = "GET", body?: unknown) =>

@@ -93,7 +93,7 @@ src/
   tracker.ts           per-person Durable Object
   match.ts             resume redaction and Clef scoring
   applications/        REST routes, field rules, validation, CSV
-  people/              admin: Access group, invites, AI spending, directory
+  admin/               Access group, invites, AI spending, directory
   mcp/tools.ts         MCP tool definitions
   web/                 React app (views, components, client API)
 mcp/server.ts          same MCP tools over stdio

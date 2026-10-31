@@ -103,31 +103,31 @@ export type PeopleList = {
 export const me = () => api<{ email: string; admin: boolean }>("/api/v1/me");
 
 export const people = {
-  list: () => api<PeopleList>("/api/v1/people"),
+  list: () => api<PeopleList>("/api/v1/admin/people"),
   add: (email: string, name: string | null) =>
-    api<PeopleList>("/api/v1/people", send("POST", { email, name })),
+    api<PeopleList>("/api/v1/admin/people", send("POST", { email, name })),
   rename: (email: string, name: string | null) =>
     api<PeopleList>(
-      `/api/v1/people/${encodeURIComponent(email)}`,
+      `/api/v1/admin/people/${encodeURIComponent(email)}`,
       send("PATCH", { name }),
     ),
   resetScores: (email: string) =>
     api<PeopleList>(
-      `/api/v1/people/${encodeURIComponent(email)}/reset`,
+      `/api/v1/admin/people/${encodeURIComponent(email)}/reset`,
       send("POST", {}),
     ),
   allowExtra: (email: string, scores: number) =>
     api<PeopleList>(
-      `/api/v1/people/${encodeURIComponent(email)}/extra`,
+      `/api/v1/admin/people/${encodeURIComponent(email)}/extra`,
       send("POST", { scores }),
     ),
   invite: (email: string) =>
     api<PeopleList>(
-      `/api/v1/people/${encodeURIComponent(email)}/invite`,
+      `/api/v1/admin/people/${encodeURIComponent(email)}/invite`,
       send("POST", {}),
     ),
   remove: (email: string) =>
-    api<PeopleList>(`/api/v1/people/${encodeURIComponent(email)}`, {
+    api<PeopleList>(`/api/v1/admin/people/${encodeURIComponent(email)}`, {
       method: "DELETE",
     }),
 };
@@ -144,9 +144,9 @@ export type AiUsage =
     };
 
 export const aiUsage = {
-  get: () => api<AiUsage>("/api/v1/ai-usage"),
+  get: () => api<AiUsage>("/api/v1/admin/ai-usage"),
   setCeiling: (ceiling: number, scope: "today" | "default") =>
-    api<AiUsage>("/api/v1/ai-usage", send("PUT", { ceiling, scope })),
+    api<AiUsage>("/api/v1/admin/ai-usage", send("PUT", { ceiling, scope })),
 };
 
 export type MatchScoreStatus = {
