@@ -320,6 +320,31 @@ describe("match scores", () => {
     ).toBe(422);
   });
 
+  it("leaves updatedAt alone when a re-score changes nothing", async () => {
+    await answers();
+    await turnOn();
+    const { id } = await data<{ id: string }>(
+      await call("/api/v1/applications", {
+        method: "POST",
+        json: {
+          company: "Acme",
+          role: "Engineer",
+          status: "saved",
+          requirements: [],
+        },
+      }),
+    );
+    const read = () =>
+      call(`/api/v1/applications/${id}`).then((response) =>
+        data<{ updatedAt: string; fitDetails: { scoredAt: string } }>(response),
+      );
+    await score([{ applicationId: id }]);
+    const before = await read();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await score([{ applicationId: id }]);
+    expect(await read()).toMatchObject(before);
+  });
+
   it("re-scores the same posting for free and saves the score, breakdown and posting", async () => {
     const clef = await answers();
     await turnOn();

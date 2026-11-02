@@ -467,14 +467,19 @@ export class Tracker extends DurableObject<Env> {
     const existing = this.application(id);
     if (!existing) return false;
     const { match, ...details } = scored;
+    const longerPosting = (existing.description?.length ?? 0) < posting.length;
+    const sameScore =
+      existing.fit === match &&
+      existing.fitDetails !== null &&
+      JSON.stringify({ ...existing.fitDetails, scoredAt: null }) ===
+        JSON.stringify({ ...details, scoredAt: null });
+    if (sameScore && !longerPosting) return true;
     this.db
       .update(applications)
       .set({
         fit: match,
         fitDetails: { ...details, scoredAt: new Date().toISOString() },
-        ...((existing.description?.length ?? 0) < posting.length
-          ? { description: posting }
-          : {}),
+        ...(longerPosting ? { description: posting } : {}),
         updatedAt: new Date(),
       })
       .where(eq(applications.id, id))
