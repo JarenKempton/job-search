@@ -6,6 +6,7 @@ import { daysWaiting, nextAction } from "@/web/board";
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { BenefitsSummary } from "@/web/components/BenefitsSummary";
 import { CompanyCard } from "@/web/components/CompanyCard";
+import { JobDescription } from "@/web/components/JobDescription";
 import { hasCompanyProfile } from "@/applications/company";
 import {
   FollowUpActions,
@@ -117,6 +118,7 @@ export function ApplicationSummary({
               onSkip={onSkipFollowUp}
             />
           )}
+          {row.description && <JobDescription text={row.description} />}
           {hasCompanyProfile(row.companyProfile) && (
             <CompanyCard profile={row.companyProfile!} />
           )}
@@ -164,13 +166,6 @@ export function ApplicationSummary({
           )}
 
           <BenefitsSummary row={row} />
-
-          {row.description && (
-            <section aria-label="Job description" className="space-y-3">
-              <h3 className="text-sm font-semibold">Job description</h3>
-              <p className="prose text-muted-foreground">{row.description}</p>
-            </section>
-          )}
         </TabsContent>
         <TabsContent value="timeline" className="pt-3">
           {timeline}
