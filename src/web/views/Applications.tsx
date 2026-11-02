@@ -29,12 +29,25 @@ import {
 import { summarize } from "@/web/stats";
 import type { ApplicationsData } from "@/web/use-applications";
 
-type Sort = "next" | "updated" | "company" | "salary" | "fit" | "interest";
+const appliedDate = (row: Application) =>
+  row.appliedOn ?? row.createdAt.slice(0, 10);
+
+type Sort =
+  | "next"
+  | "applied"
+  | "updated"
+  | "company"
+  | "salary"
+  | "fit"
+  | "interest";
 
 const SORTS: Record<
   Exclude<Sort, "next">,
   (a: Application, b: Application) => number
 > = {
+  applied: (a, b) =>
+    appliedDate(b).localeCompare(appliedDate(a)) ||
+    b.createdAt.localeCompare(a.createdAt),
   updated: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
   company: (a, b) => a.company.localeCompare(b.company),
   salary: (a, b) =>
@@ -188,6 +201,7 @@ export function Applications({
           </SelectTrigger>
           <SelectContent position="popper" align="end">
             <SelectItem value="next">Follow-ups first</SelectItem>
+            <SelectItem value="applied">Recently applied</SelectItem>
             <SelectItem value="updated">Recently updated</SelectItem>
             <SelectItem value="company">Company A–Z</SelectItem>
             <SelectItem value="salary">Highest salary</SelectItem>
