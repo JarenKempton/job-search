@@ -5,6 +5,8 @@ import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { BenefitsSummary } from "@/web/components/BenefitsSummary";
+import { CompanyCard } from "@/web/components/CompanyCard";
+import { hasCompanyProfile } from "@/applications/company";
 import {
   FollowUpActions,
   type FollowUp,
@@ -55,6 +57,11 @@ export function ApplicationSummary({
     <div className="summary">
       <header className="summary-head">
         <p className="summary-company">{row.company}</p>
+        {row.companyProfile?.tagline && (
+          <p className="text-sm text-muted-foreground">
+            {row.companyProfile.tagline}
+          </p>
+        )}
         <h2>{row.role}</h2>
         {where && <p className="muted">{where}</p>}
         <div className="summary-actions">
@@ -110,6 +117,9 @@ export function ApplicationSummary({
               onSkip={onSkipFollowUp}
             />
           )}
+          {hasCompanyProfile(row.companyProfile) && (
+            <CompanyCard profile={row.companyProfile!} />
+          )}
 
           <dl className="facts">
             {(row.salaryMin != null || row.salaryMax != null) && (
@@ -154,6 +164,13 @@ export function ApplicationSummary({
           )}
 
           <BenefitsSummary row={row} />
+
+          {row.description && (
+            <section aria-label="Job description" className="space-y-3">
+              <h3 className="text-sm font-semibold">Job description</h3>
+              <p className="prose text-muted-foreground">{row.description}</p>
+            </section>
+          )}
         </TabsContent>
         <TabsContent value="timeline" className="pt-3">
           {timeline}

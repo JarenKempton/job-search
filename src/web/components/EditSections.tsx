@@ -13,6 +13,7 @@ import {
 import { Choice, Field } from "@/web/components/fields";
 import { BENEFIT_GROUPS } from "@/applications/benefits";
 import { BenefitsEditor } from "@/web/components/BenefitsEditor";
+import { CompanyEditor } from "@/web/components/CompanyEditor";
 import { InterestSelect } from "@/web/components/InterestSelect";
 import type { FormApi } from "@/web/components/form-state";
 import { Input } from "@/web/components/ui/input";
@@ -109,6 +110,13 @@ export function EditSections({ form, set, text }: FormApi) {
             />
           </Field>
         </div>
+      </Section>
+
+      <Section title="Company" summary="What they do, size, links">
+        <CompanyEditor
+          value={form.companyProfile}
+          onChange={(profile) => set("companyProfile", profile)}
+        />
       </Section>
 
       <Section title="Pay & fit" summary="Salary and resume match">

@@ -4,6 +4,7 @@ import {
   benefitsPatchSchema,
   benefitsSchema,
 } from "../applications/benefits.ts";
+import { companyProfileSchema } from "../applications/company.ts";
 import {
   APPLY_METHODS,
   CHANNELS,
@@ -92,6 +93,11 @@ const fields = {
     ),
   contactName: z.string().optional(),
   contactEmail: z.string().email().optional(),
+  companyProfile: companyProfileSchema
+    .optional()
+    .describe(
+      "What the company does, from the posting and a web search for the company. Replaces the whole profile; omit facts you can't verify, never guess.",
+    ),
   description: z.string().optional().describe("Full job description text"),
   notes: z.string().optional(),
   pto: z
@@ -257,7 +263,7 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
     "add_application",
     {
       description:
-        "Track a new job. Before calling, check list_applications for a duplicate. When given a posting URL, read the posting first and fill in as many fields as it supports. Status defaults to saved; use applied if the applicant already applied. Include benefits supported by the posting; leave unknown benefits unset.",
+        "Track a new job. Before calling, check list_applications for a duplicate. When given a posting URL, read the posting first and fill in as many fields as it supports. Status defaults to saved; use applied if the applicant already applied. Include benefits supported by the posting; leave unknown benefits unset. Fill companyProfile from the posting and a quick web search for the company.",
       inputSchema: fields,
     },
     async (input) =>

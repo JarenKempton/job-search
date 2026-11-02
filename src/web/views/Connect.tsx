@@ -19,6 +19,12 @@ const FIND_PROMPT = `Find jobs that fit my resume, using my Job Search tracker:
 5. Show me a table: company, role, score and rating, what I'm missing, and the link. Don't add anything to my tracker yet.
 6. Ask which ones I want. Add only those with add_application (status saved, or applied with today's date if I say I applied), then call score_jobs again with their applicationId, the same posting and the same requirements so the score, its breakdown and the posting are saved at no extra cost.`;
 
+const COMPANY_PROMPT = `Fill in company info in my Job Search tracker:
+1. list_applications, then get_application for each one. Skip any that already have a companyProfile.
+2. For each remaining company, read the saved job description, then search the web for the company's own site and LinkedIn page. Make sure it's the same company as the posting, not one with a similar name.
+3. Save it with update_application as companyProfile: a one-sentence tagline, one or two short paragraphs on what they make or sell and who their customers are, website, LinkedIn, size, year founded and up to five industries. Leave out anything you can't verify; never guess.
+4. Reply with a short list of the companies you filled in and any you couldn't find.`;
+
 const PROMPTS = [
   {
     title: "Daily email sync",
@@ -31,6 +37,12 @@ const PROMPTS = [
     hint: "Ask your AI to search and score jobs for you.",
     label: "find jobs prompt",
     text: FIND_PROMPT,
+  },
+  {
+    title: "Company info",
+    hint: "Ask your AI to fill in what each company does.",
+    label: "company info prompt",
+    text: COMPANY_PROMPT,
   },
 ];
 
