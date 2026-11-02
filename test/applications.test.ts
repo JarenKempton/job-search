@@ -190,6 +190,43 @@ describe("applications", () => {
     expect(invalid.status).toBe(422);
   });
 
+  it("stores, replaces, and clears a company profile", async () => {
+    const created = await create({
+      company: "ITProfound",
+      role: "UX Designer",
+      companyProfile: {
+        tagline: "IT services for hospitality and logistics",
+        website: "https://itprofound.com",
+        founded: 2013,
+        industries: ["Consulting", "Hospitality"],
+      },
+    });
+    expect(created.companyProfile).toMatchObject({ founded: 2013 });
+
+    const replaced = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { companyProfile: { size: "11-50 employees" } },
+    });
+    expect((await data<Row>(replaced)).companyProfile).toEqual({
+      size: "11-50 employees",
+    });
+
+    const invalid = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { companyProfile: { website: "itprofound" } },
+    });
+    expect(invalid.status).toBe(422);
+
+    await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { companyProfile: null },
+    });
+    const detail = await data<Row>(
+      await call(`/api/v1/applications/${created.id}`),
+    );
+    expect(detail.companyProfile).toBeNull();
+  });
+
   it("rejects an inverted salary range with a readable message", async () => {
     const response = await call("/api/v1/applications", {
       method: "POST",

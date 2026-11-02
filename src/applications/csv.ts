@@ -23,6 +23,7 @@ const COLUMNS: Array<keyof Application> = [
   "contactName",
   "contactEmail",
   "jobUrl",
+  "companyProfile",
   "notes",
   "pto",
   "sickLeave",

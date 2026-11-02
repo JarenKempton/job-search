@@ -1,5 +1,6 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { Benefits } from "../applications/benefits";
+import type { CompanyProfile } from "../applications/company";
 import type { JobMatch } from "../match";
 import type {
   ApplyMethod,
@@ -45,6 +46,9 @@ export const applications = sqliteTable(
       .default(false),
     contactName: text("contact_name"),
     contactEmail: text("contact_email"),
+    companyProfile: text("company_profile", {
+      mode: "json",
+    }).$type<CompanyProfile>(),
     description: text("description"),
     notes: text("notes"),
     pto: text("pto"),

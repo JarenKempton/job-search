@@ -6,6 +6,7 @@ import m0003 from './0003_boring_raza.sql';
 import m0004 from './0004_graceful_robbie_robertson.sql';
 import m0005 from './0005_fearless_captain_america.sql';
 import m0006 from './0006_great_sir_ram.sql';
+import m0007 from './0007_tidy_shape.sql';
 
   export default {
     journal,
@@ -16,7 +17,8 @@ m0002,
 m0003,
 m0004,
 m0005,
-m0006
+m0006,
+m0007
     }
   }
   

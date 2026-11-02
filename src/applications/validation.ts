@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { benefitsPatchSchema, benefitsSchema } from "./benefits";
+import { companyProfileSchema } from "./company";
 import {
   APPLY_METHODS,
   CHANNELS,
@@ -49,6 +50,7 @@ export const applicationFields = {
   skipFollowUp: z.boolean().optional(),
   contactName: text(200),
   contactEmail: optional(z.email().max(320)),
+  companyProfile: companyProfileSchema.nullable().optional(),
   description: text(50_000),
   notes: text(20_000),
   pto: text(5_000),

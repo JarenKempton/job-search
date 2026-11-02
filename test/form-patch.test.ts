@@ -36,6 +36,29 @@ async function save(baseline: Application, form: ReturnType<typeof toForm>) {
 }
 
 describe("application form patches", () => {
+  it("keeps an agent-filled company profile and clears it when emptied", async () => {
+    const baseline = await create();
+    const filled = await rpc("tools/call", {
+      name: "update_application",
+      arguments: {
+        id: baseline.id,
+        companyProfile: { tagline: "Hotel software", industries: ["Travel"] },
+      },
+    });
+    expect(filled.isError).not.toBe(true);
+    const stale = toForm(baseline);
+    stale.notes = "Edited";
+    expect(toPatch(stale, baseline)).toEqual({ notes: "Edited" });
+
+    const current = await data<Application>(
+      await call(`/api/v1/applications/${baseline.id}`),
+    );
+    expect(current.companyProfile?.tagline).toBe("Hotel software");
+    const form = toForm(current);
+    form.companyProfile = { tagline: null, industries: [] };
+    expect((await save(current, form)).companyProfile).toBeNull();
+  }, 15_000);
+
   it("preserves MCP-added benefits on an unrelated stale form save", async () => {
     const baseline = await create();
     const form = toForm(baseline);

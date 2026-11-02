@@ -5,6 +5,9 @@ import { localToday, type Application } from "@/web/api";
 import { daysWaiting, nextAction } from "@/web/board";
 import { StatusBadge } from "@/web/components/StatusBadge";
 import { BenefitsSummary } from "@/web/components/BenefitsSummary";
+import { CompanyCard } from "@/web/components/CompanyCard";
+import { JobDescription } from "@/web/components/JobDescription";
+import { hasCompanyProfile } from "@/applications/company";
 import {
   FollowUpActions,
   type FollowUp,
@@ -55,6 +58,11 @@ export function ApplicationSummary({
     <div className="summary">
       <header className="summary-head">
         <p className="summary-company">{row.company}</p>
+        {row.companyProfile?.tagline && (
+          <p className="text-sm text-muted-foreground">
+            {row.companyProfile.tagline}
+          </p>
+        )}
         <h2>{row.role}</h2>
         {where && <p className="muted">{where}</p>}
         <div className="summary-actions">
@@ -109,6 +117,10 @@ export function ApplicationSummary({
               onFollowedUp={onFollowedUp}
               onSkip={onSkipFollowUp}
             />
+          )}
+          {row.description && <JobDescription text={row.description} />}
+          {hasCompanyProfile(row.companyProfile) && (
+            <CompanyCard profile={row.companyProfile!} />
           )}
 
           <dl className="facts">

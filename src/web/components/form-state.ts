@@ -5,6 +5,7 @@ import type {
   ApplicationUpdate,
 } from "@/web/api";
 import { benefitsPatchSchema } from "@/applications/benefits";
+import { hasCompanyProfile, type CompanyProfile } from "@/applications/company";
 
 const NUMERIC = [
   "salaryMin",
@@ -46,6 +47,7 @@ export const EMPTY: FormState = {
   skipFollowUp: false,
   contactName: null,
   contactEmail: null,
+  companyProfile: null,
   description: null,
   notes: null,
   pto: null,
@@ -80,7 +82,21 @@ export function toInput(state: FormState): ApplicationInput {
       return [key, Number.isFinite(value) ? Math.round(value) : null];
     }),
   ) as Pick<ApplicationInput, Numeric>;
-  return { ...state, ...numbers };
+  return {
+    ...state,
+    ...numbers,
+    companyProfile: cleanProfile(state.companyProfile),
+  };
+}
+
+function cleanProfile(profile: CompanyProfile | null) {
+  if (!profile) return null;
+  const kept = Object.fromEntries(
+    Object.entries(profile).filter(([, value]) =>
+      Array.isArray(value) ? value.length : value != null,
+    ),
+  ) as CompanyProfile;
+  return hasCompanyProfile(kept) ? kept : null;
 }
 
 function changedValue(value: unknown, baseline: unknown): unknown {
