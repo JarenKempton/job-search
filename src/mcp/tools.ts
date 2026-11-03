@@ -76,6 +76,10 @@ const fields = {
       "How well the applicant matches the posting, 0-100. Prefer score_jobs, which sets this from a decision model; never estimate it yourself.",
     ),
   interest: z.number().int().min(1).max(5).optional(),
+  starred: z
+    .boolean()
+    .optional()
+    .describe("Star an application independently of its interest rating"),
   status: z
     .enum(STATUSES)
     .optional()

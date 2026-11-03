@@ -5,7 +5,11 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { jobs, localToday, type Application } from "@/web/api";
-import { byUrgency, stageOf, STAGES, type StageKey } from "@/web/board";
+import { byUrgency } from "@/web/board";
+import {
+  ApplicationFilters,
+  useApplicationFilters,
+} from "@/web/components/ApplicationFilters";
 import { ApplicationRow } from "@/web/components/ApplicationRow";
 import { StatsStrip } from "@/web/components/StatsStrip";
 import { Button } from "@/web/components/ui/button";
@@ -73,10 +77,6 @@ function useSaved<T extends string | null>(
 }
 
 const SORT_KEYS: Sort[] = ["next", ...(Object.keys(SORTS) as Sort[])];
-const STAGE_KEYS: (StageKey | null)[] = [
-  null,
-  ...STAGES.map((entry) => entry.key),
-];
 
 export function Applications({
   data,
@@ -90,7 +90,7 @@ export function Applications({
   onGo: (page: "resume" | "connect") => void;
 }) {
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useSaved("applications.stage", null, STAGE_KEYS);
+  const [filters, setFilters] = useApplicationFilters();
   const [sort, setSort] = useSaved<Sort>(
     "applications.sort",
     "next",
@@ -114,14 +114,27 @@ export function Applications({
   const rows = useMemo(
     () =>
       matches
-        .filter((row) => !stage || stageOf(row.status).key === stage)
+        .filter(
+          (row) =>
+            filters.statuses.includes(row.status) &&
+            (!filters.starredOnly || row.starred),
+        )
         .sort(sort === "next" ? byUrgency(today) : SORTS[sort]),
-    [matches, stage, sort, today],
+    [matches, filters, sort, today],
   );
 
   async function updateInterest(id: string, interest: number | null) {
     try {
       await jobs.update(id, { interest });
+      await data.refresh();
+    } catch (cause) {
+      data.setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  async function updateStar(id: string, starred: boolean) {
+    try {
+      await jobs.update(id, { starred });
       await data.refresh();
     } catch (cause) {
       data.setError(cause instanceof Error ? cause.message : String(cause));
@@ -158,7 +171,7 @@ export function Applications({
       <StatsStrip stats={stats} />
 
       <div className="toolbar">
-        <label className="search">
+        <label className="search toolbar-search">
           <SearchIcon />
           <Input
             type="search"
@@ -168,32 +181,11 @@ export function Applications({
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        <Select
-          value={stage ?? "all"}
-          onValueChange={(value) =>
-            setStage(value === "all" ? null : (value as StageKey))
-          }
-        >
-          <SelectTrigger
-            aria-label="Filter by status"
-            className="status-filter w-full min-w-0"
-          >
-            <SelectValue className="min-w-0 flex-1 truncate text-left" />
-          </SelectTrigger>
-          <SelectContent position="popper" align="start">
-            <SelectItem value="all">All statuses</SelectItem>
-            {STAGES.map((item) => (
-              <SelectItem key={item.key} value={item.key}>
-                {item.title} (
-                {
-                  matches.filter((row) => stageOf(row.status).key === item.key)
-                    .length
-                }
-                )
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ApplicationFilters
+          filters={filters}
+          onChange={setFilters}
+          applications={matches}
+        />
         <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>
           <SelectTrigger aria-label="Sort" className="sort-control">
             <ArrowDownWideNarrowIcon className="hidden text-muted-foreground sm:block" />
@@ -244,6 +236,7 @@ export function Applications({
                   today={today}
                   onOpen={onOpen}
                   onInterest={updateInterest}
+                  onStar={updateStar}
                 />
               ))}
               {rows.length === 0 && (

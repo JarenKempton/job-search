@@ -40,6 +40,7 @@ export const EMPTY: FormState = {
   yearsRequired: "",
   fit: "",
   interest: "",
+  starred: false,
   status: "saved",
   appliedOn: null,
   heardBackOn: null,
