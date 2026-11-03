@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { jobs, type Application } from "./api";
+import { watchChanges } from "./live";
 
 export const REFRESH_EVERY_MS = 60_000;
 
@@ -26,7 +27,9 @@ export function useApplications() {
     const timer = window.setInterval(whenVisible, REFRESH_EVERY_MS);
     window.addEventListener("focus", whenVisible);
     document.addEventListener("visibilitychange", whenVisible);
+    const stopWatching = watchChanges(() => void refresh());
     return () => {
+      stopWatching();
       window.clearInterval(timer);
       window.removeEventListener("focus", whenVisible);
       document.removeEventListener("visibilitychange", whenVisible);
