@@ -43,6 +43,7 @@ export const applicationFields = {
   yearsRequired: whole(0, 50),
   fit: whole(0, 100),
   interest: whole(1, 5),
+  starred: z.boolean().optional(),
   status: z.enum(STATUSES),
   appliedOn: optional(day),
   heardBackOn: optional(day),

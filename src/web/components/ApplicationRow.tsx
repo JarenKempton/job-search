@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StarIcon } from "lucide-react";
 import { matchRating } from "@/applications/fields";
 import type { Application } from "@/web/api";
 import { InterestSelect } from "@/web/components/InterestSelect";
@@ -58,13 +59,16 @@ export function ApplicationRow({
   today,
   onOpen,
   onInterest,
+  onStar,
 }: {
   row: Application;
   today: string;
   onOpen: (id: string) => void;
   onInterest: (id: string, value: number | null) => Promise<void>;
+  onStar: (id: string, value: boolean) => Promise<void>;
 }) {
   const [saving, setSaving] = useState(false);
+  const [starring, setStarring] = useState(false);
   const next = nextAction(row, today);
   const waiting = daysWaiting(row, today);
   const context = [
@@ -82,6 +86,15 @@ export function ApplicationRow({
       setSaving(false);
     }
   }
+  async function changeStar() {
+    setStarring(true);
+    try {
+      await onStar(row.id, !row.starred);
+    } finally {
+      setStarring(false);
+    }
+  }
+
   const interest = (
     <InterestSelect
       value={row.interest}
@@ -111,14 +124,33 @@ export function ApplicationRow({
       }}
     >
       <TableCell className="space-y-1 px-4 py-3 whitespace-normal align-top sm:align-middle">
-        <Button
-          type="button"
-          onClick={() => onOpen(row.id)}
-          variant="link"
-          className="h-auto max-w-full justify-start whitespace-normal p-0 text-left font-semibold text-foreground hover:no-underline"
-        >
-          {row.company}
-        </Button>
+        <div className="flex items-start gap-1">
+          <Button
+            type="button"
+            onClick={() => onOpen(row.id)}
+            variant="link"
+            className="h-auto min-w-0 shrink justify-start whitespace-normal p-0 text-left font-semibold text-foreground hover:no-underline"
+          >
+            {row.company}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className={
+              row.starred
+                ? "-my-0.5 shrink-0 text-amber-300 hover:text-amber-200"
+                : "-my-0.5 shrink-0 text-muted-foreground/60 hover:text-foreground"
+            }
+            aria-label={`${row.starred ? "Unstar" : "Star"} ${row.company}`}
+            aria-pressed={row.starred}
+            title={row.starred ? "Remove star" : "Star application"}
+            disabled={starring}
+            onClick={() => void changeStar()}
+          >
+            <StarIcon className={row.starred ? "fill-current" : undefined} />
+          </Button>
+        </div>
         <p className="break-words text-sm">{row.role}</p>
         {context.length > 0 && (
           <p className="text-xs text-muted-foreground">{context.join(" · ")}</p>

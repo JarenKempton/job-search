@@ -24,6 +24,52 @@ describe("access", () => {
 });
 
 describe("applications", () => {
+  it("persists stars independently of interest and preserves them during other edits", async () => {
+    const created = await create({
+      company: "Acme",
+      role: "Product Designer",
+      interest: 3,
+    });
+    expect(created).toMatchObject({ starred: false, interest: 3 });
+
+    const starred = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { starred: true },
+    });
+    expect(starred.status).toBe(200);
+    expect(await data(starred)).toMatchObject({ starred: true, interest: 3 });
+
+    await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { interest: 5 },
+    });
+    const rows = await data<Row[]>(await call("/api/v1/applications"));
+    expect(rows).toMatchObject([
+      { id: created.id, starred: true, interest: 5 },
+    ]);
+
+    const unstarred = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { starred: false },
+    });
+    expect(await data(unstarred)).toMatchObject({
+      starred: false,
+      interest: 5,
+    });
+
+    const saved = await create({
+      company: "Globex",
+      role: "Designer",
+      starred: true,
+    });
+    expect(saved.starred).toBe(true);
+    const invalid = await call(`/api/v1/applications/${created.id}`, {
+      method: "PATCH",
+      json: { starred: "true" },
+    });
+    expect(invalid.status).toBe(422);
+  });
+
   it("stamps the applied date and logs the status when created as applied", async () => {
     const created = await create({
       company: "Acme",

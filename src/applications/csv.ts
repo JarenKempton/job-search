@@ -14,6 +14,7 @@ const COLUMNS: Array<keyof Application> = [
   "yearsRequired",
   "fit",
   "interest",
+  "starred",
   "workMode",
   "employmentType",
   "location",

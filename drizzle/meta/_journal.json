@@ -57,6 +57,13 @@
       "when": 1793643072815,
       "tag": "0007_tidy_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793725730663,
+      "tag": "0008_public_micromax",
+      "breakpoints": true
     }
   ]
 }

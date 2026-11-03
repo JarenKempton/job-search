@@ -37,6 +37,7 @@ export const applications = sqliteTable(
     fit: integer("fit"),
     fitDetails: text("fit_details", { mode: "json" }).$type<FitDetails>(),
     interest: integer("interest"),
+    starred: integer("starred", { mode: "boolean" }).notNull().default(false),
     status: text("status").$type<Status>().notNull().default("saved"),
     appliedOn: text("applied_on"),
     heardBackOn: text("heard_back_on"),

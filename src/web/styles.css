@@ -233,7 +233,10 @@
   align-items: center;
   gap: 10px;
 }
-.toolbar .search {
+.toolbar-search {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
   grid-column: 1 / -1;
 }
 .toolbar input,
@@ -609,7 +612,7 @@
   .toolbar {
     grid-template-columns: minmax(0, 1fr) 180px 225px;
   }
-  .toolbar .search {
+  .toolbar-search {
     grid-column: auto;
   }
 }
