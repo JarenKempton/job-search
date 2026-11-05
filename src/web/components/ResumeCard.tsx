@@ -10,18 +10,14 @@ import {
   CardHeader,
 } from "@/web/components/ui/card";
 import { Textarea } from "@/web/components/ui/textarea";
+import { loadPdfReader, readPdf } from "@/web/resume-pdf";
 
 const ACCEPT = ".pdf,.txt,application/pdf,text/plain";
 
-const loadPdfReader = () => import("unpdf");
-
-async function readText(file: File) {
+async function readFile(file: File) {
   if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name))
-    return file.text();
-  const { extractText, getDocumentProxy } = await loadPdfReader();
-  const pdf = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()));
-  const { text } = await extractText(pdf, { mergePages: true });
-  return text;
+    return { text: await file.text(), layout: null };
+  return readPdf(file);
 }
 
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
@@ -63,19 +59,27 @@ function UploadButton({
   );
 }
 
-export function ResumeCard() {
+export function ResumeCard({
+  onResume,
+}: {
+  onResume?: (resume: Resume | null) => void;
+}) {
   const [saved, setSaved] = useState<Resume | null | undefined>(undefined);
   const [draft, setDraft] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [layout, setLayout] = useState<Resume["layout"]>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .get()
-      .then(setSaved)
+      .then((resume) => {
+        setSaved(resume);
+        onResume?.(resume);
+      })
       .catch((cause: Error) => setError(cause.message));
-  }, []);
+  }, [onResume]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -98,12 +102,14 @@ export function ResumeCard() {
     }
     void run(async () => {
       try {
-        const text = (await readText(file)).trim();
+        const read = await readFile(file);
+        const text = read.text.trim();
         if (!text)
           throw new Error(
             "No text found in that file. Try another file or paste the text instead.",
           );
         setFileName(file.name);
+        setLayout(read.layout);
         setDraft(text);
       } finally {
         input.value = "";
@@ -113,9 +119,12 @@ export function ResumeCard() {
 
   const save = () =>
     run(async () => {
-      setSaved(await api.save({ text: draft ?? "", fileName }));
+      const resume = await api.save({ text: draft ?? "", fileName, layout });
+      setSaved(resume);
+      onResume?.(resume);
       setDraft(null);
       setFileName(null);
+      setLayout(null);
     });
 
   const remove = () =>
@@ -123,6 +132,7 @@ export function ResumeCard() {
       if (!window.confirm("Remove your saved resume?")) return;
       await api.remove();
       setSaved(null);
+      onResume?.(null);
     });
 
   return (
@@ -150,6 +160,7 @@ export function ResumeCard() {
                 onClick={() => {
                   setDraft(null);
                   setFileName(null);
+                  setLayout(null);
                 }}
               >
                 Cancel
@@ -186,6 +197,7 @@ export function ResumeCard() {
               disabled={busy}
               onClick={() => {
                 setFileName(saved.fileName);
+                setLayout(saved.layout);
                 setDraft(saved.text);
               }}
             >

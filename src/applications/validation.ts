@@ -99,9 +99,19 @@ export const createEventSchema = z.object({
   channel: optional(z.enum(CHANNELS)),
 });
 
+export const findingSchema = z.object({
+  severity: z.enum(["fix", "consider"]),
+  title: z.string().trim().min(1).max(200),
+  detail: z.string().trim().max(1_000),
+  example: z.string().trim().max(300).nullable().optional(),
+});
+
+export type Finding = z.infer<typeof findingSchema>;
+
 export const resumeSchema = z.object({
   text: z.string().trim().min(1, "Resume text is empty.").max(50_000),
   fileName: z.string().trim().max(200).nullable().optional(),
+  layout: z.array(findingSchema).max(20).nullable().optional(),
 });
 
 export type ResumeInput = z.infer<typeof resumeSchema>;
