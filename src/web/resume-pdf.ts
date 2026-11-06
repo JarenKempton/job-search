@@ -144,11 +144,9 @@ export function layoutFindings(pages: PageText[]): Finding[] {
       page.filter(
         (line) =>
           line.segments.length > 1 &&
-          line.segments.every(
-            (segment) =>
-              words(segment).length >= 3 &&
-              !DATE.test(segment) &&
-              !CITY_START.test(segment),
+          line.segments.some((segment) => words(segment).length >= 3) &&
+          !line.segments.some(
+            (segment) => DATE.test(segment) || CITY_START.test(segment),
           ),
       ).length >= 5,
   );

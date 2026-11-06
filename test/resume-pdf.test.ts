@@ -107,6 +107,19 @@ describe("PDF layout checks", () => {
         ]),
       ]),
     ).toEqual(["Two-column layout"]);
+    expect(
+      titles([
+        ...header,
+        ...["TypeScript", "AWS", "Docker", "React", "Postgres", "Go"].map(
+          (skill): [number, string, number, string] => [
+            36,
+            skill,
+            200,
+            `• ${BODY.slice(0, 60)}`,
+          ],
+        ),
+      ]),
+    ).toEqual(["Two-column layout"]);
   });
 
   it("flags a PDF with almost no text and stops there", () => {
