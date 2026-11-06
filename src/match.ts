@@ -46,13 +46,14 @@ export type JobMatch = {
 
 const HEADER_LINES = 6;
 const NAME = /^\p{Lu}[\p{L}'.-]*(?:\s+\p{Lu}[\p{L}'.-]*){1,3}$/u;
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+export const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
 const URL = /\b(?:https?:\/\/|www\.)[^\s),;]+/gi;
-const PROFILE =
+export const PROFILE =
   /\b(?:linkedin|github|gitlab|behance|dribbble|medium|twitter|x)\.com\/[^\s),;]*/gi;
-const US_PHONE = /(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
-const INTL_PHONE = /\+\d{1,3}(?:[\s.-]?\(?\d{1,4}\)?){2,5}/g;
-const SITE =
+export const US_PHONE =
+  /(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+export const INTL_PHONE = /\+\d{1,3}(?:[\s.-]?\(?\d{1,4}\)?){2,5}/g;
+export const SITE =
   /\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|io|dev|me|co|app|site|page|tech|xyz)\b(?:\/[^\s),;]*)?/gi;
 const HANDLE = /(^|[\s(|·•])@\w{2,30}\b/g;
 const CONTACT_LINE =
@@ -60,7 +61,7 @@ const CONTACT_LINE =
 const STREET =
   /\b\d{1,6}\s+(?:[\w.'-]+\s){1,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Ct|Court|Pl|Place)\b\.?/g;
 
-function nameIn(line: string) {
+export function nameIn(line: string) {
   const candidate = line
     .replace(/^[#*\s]+/, "")
     .split(/[|,·•–—]/)[0]

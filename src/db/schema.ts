@@ -1,5 +1,6 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { Benefits } from "../applications/benefits";
+import type { Finding } from "../applications/validation";
 import type { CompanyProfile } from "../applications/company";
 import type { JobMatch } from "../match";
 import type {
@@ -93,6 +94,7 @@ export const resumes = sqliteTable("resumes", {
   id: text("id").primaryKey(),
   text: text("text").notNull(),
   fileName: text("file_name"),
+  layout: text("layout", { mode: "json" }).$type<Finding[]>(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 

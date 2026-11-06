@@ -92,6 +92,12 @@ export const applicationRoutes = new Hono<AppEnv>()
   .delete("/api/v1/resume", async (context) =>
     ok({ removed: await context.var.tracker.removeResume() }),
   )
+  .get("/api/v1/resume/scan", async (context) =>
+    ok(await context.var.tracker.resumeScan()),
+  )
+  .post("/api/v1/resume/scan", async (context) =>
+    ok(orFail(await context.var.tracker.scanResume())),
+  )
   .get("/api/v1/match-scores/settings", async (context) =>
     ok(await context.var.tracker.matchScores()),
   )

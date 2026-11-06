@@ -21,6 +21,7 @@ describe("remote MCP", () => {
       "delete_application",
       "get_resume",
       "save_resume",
+      "scan_resume",
       "score_jobs",
     ]);
   });

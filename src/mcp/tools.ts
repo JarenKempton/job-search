@@ -390,6 +390,17 @@ export function jobSearchServer(call: ApiCall, today: () => string) {
   );
 
   server.registerTool(
+    "scan_resume",
+    {
+      description:
+        "Run the applicant's saved resume through an ATS-style parser and return what it read: contact details, each job's company, title and dates, education, skills and section headings, plus findings to fix before applying. layout holds problems found in the uploaded PDF itself, such as a two-column layout or bullets that aren't text; it's null when the resume was pasted or saved as text. Scanning the same resume text again returns the saved result without using a scan. Scans are limited per day; the result says how many are used. Contact details are removed before the AI reads the resume.",
+      annotations: { openWorldHint: true },
+      inputSchema: {},
+    },
+    async () => reply(await call("/api/v1/resume/scan", "POST")),
+  );
+
+  server.registerTool(
     "score_jobs",
     {
       description:

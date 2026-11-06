@@ -1,5 +1,6 @@
 import type { Channel, EventKind } from "@/applications/fields";
 import type { BenefitsPatch } from "@/applications/benefits";
+import type { ResumeScan } from "@/resume-scan";
 import type {
   Application as Row,
   ApplicationEvent as EventRow,
@@ -79,10 +80,23 @@ export const jobs = {
 
 export const resume = {
   get: () => api<Resume | null>("/api/v1/resume"),
-  save: (input: { text: string; fileName: string | null }) =>
-    api<Resume>("/api/v1/resume", send("PUT", input)),
+  save: (input: {
+    text: string;
+    fileName: string | null;
+    layout: Resume["layout"];
+  }) => api<Resume>("/api/v1/resume", send("PUT", input)),
   remove: () =>
     api<{ removed: boolean }>("/api/v1/resume", { method: "DELETE" }),
+  scan: () => api<ResumeScanStatus>("/api/v1/resume/scan"),
+  runScan: () =>
+    api<ResumeScanStatus>("/api/v1/resume/scan", { method: "POST" }),
+};
+
+export type ResumeScanStatus = {
+  scan: ResumeScan | null;
+  layout: Resume["layout"];
+  usedToday: number;
+  dailyLimit: number;
 };
 
 export type Person = {

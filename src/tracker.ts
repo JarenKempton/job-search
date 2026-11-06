@@ -21,11 +21,14 @@ import { database, type Database } from "./db/client";
 import { applicationEvents, applications, resumes } from "./db/schema";
 import type { Env } from "./env";
 import { askClef, DAILY_SCORES, type JobMatch } from "./match";
+import { askScanner, DAILY_SCANS, type ResumeScan } from "./resume-scan";
 
 const CHANGED = JSON.stringify({ type: "changed" });
 const RESUME = "current";
 const MATCH_SCORES = "matchScores";
 const SCORE_CACHE = "scoreCache";
+const RESUME_SCANS = "resumeScans";
+const RESUME_SCAN = "resumeScan";
 
 type MatchSettings = {
   enabled: boolean;
@@ -40,16 +43,10 @@ type JobToScore = {
   applicationId?: string | null;
 };
 
-async function scoreKey(
-  resume: string,
-  posting: string,
-  requirements: string[],
-) {
+async function hashOf(...parts: string[]) {
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(
-      [resume, posting, ...requirements].join("\n\u0000\n"),
-    ),
+    new TextEncoder().encode(parts.join("\n\u0000\n")),
   );
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -287,6 +284,7 @@ export class Tracker extends DurableObject<Env> {
       id: RESUME,
       text: input.text,
       fileName: input.fileName ?? null,
+      layout: input.layout ?? null,
       updatedAt: new Date(),
     };
     const saved = this.db
@@ -307,6 +305,64 @@ export class Tracker extends DurableObject<Env> {
       .get();
     if (removed) this.changed();
     return Boolean(removed);
+  }
+
+  async resumeScan() {
+    const resume = this.resume();
+    const saved = this.ctx.storage.kv.get<{ key: string; scan: ResumeScan }>(
+      RESUME_SCAN,
+    );
+    const current =
+      resume && saved?.key === (await hashOf(resume.text)) ? saved.scan : null;
+    return {
+      scan: current,
+      layout: resume?.layout ?? null,
+      usedToday: this.scansUsed(),
+      dailyLimit: DAILY_SCANS,
+    };
+  }
+
+  async scanResume() {
+    const resume = this.resume();
+    if (!resume)
+      return failure(
+        409,
+        "no_resume",
+        "No resume is saved. Ask the person to add one on the Resume page, or call save_resume with resume text they give you, then try again.",
+      );
+    const key = await hashOf(resume.text);
+    const known = await this.resumeScan();
+    if (known.scan) return known;
+    if (known.usedToday >= DAILY_SCANS)
+      return failure(
+        429,
+        "resume_scan_daily_limit",
+        `All ${DAILY_SCANS} of today's resume scans are used; they reset at midnight UTC. Don't call scan_resume again today.`,
+      );
+    const day = utcToday();
+    this.ctx.storage.kv.put(RESUME_SCANS, { day, used: known.usedToday + 1 });
+    const result = await askScanner(this.env.AI, resume.text);
+    if ("error" in result) {
+      if (utcToday() === day)
+        this.ctx.storage.kv.put(RESUME_SCANS, {
+          day,
+          used: Math.max(0, this.scansUsed() - 1),
+        });
+      return result.error === "allowance"
+        ? failure(
+            429,
+            "ai_allowance_used",
+            "Today's shared AI allowance is used up; it resets at midnight UTC. Don't call scan_resume again today.",
+          )
+        : failure(
+            502,
+            "resume_scan_failed",
+            "The resume couldn't be scanned. Try again later; don't retry in a loop.",
+          );
+    }
+    this.ctx.storage.kv.put(RESUME_SCAN, { key, scan: result.scan });
+    this.changed();
+    return await this.resumeScan();
   }
 
   matchScores() {
@@ -356,7 +412,7 @@ export class Tracker extends DurableObject<Env> {
       );
     const keys = await Promise.all(
       jobs.map((job) =>
-        scoreKey(resume.text, job.posting, job.requirements ?? []),
+        hashOf(resume.text, job.posting, ...(job.requirements ?? [])),
       ),
     );
     const settings = this.matchSettings();
@@ -452,6 +508,13 @@ export class Tracker extends DurableObject<Env> {
       .from(applications)
       .where(eq(applications.id, id))
       .get();
+  }
+
+  private scansUsed() {
+    const saved = this.ctx.storage.kv.get<{ day: string; used: number }>(
+      RESUME_SCANS,
+    );
+    return saved?.day === utcToday() ? saved.used : 0;
   }
 
   private matchSettings(): MatchSettings {
