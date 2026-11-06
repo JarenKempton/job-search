@@ -5,6 +5,7 @@ export type PageText = { width: number; items: TextItem[] };
 type Line = {
   text: string;
   x: number;
+  y: number;
   end: number;
   segments: string[];
   split: number | null;
@@ -90,6 +91,7 @@ function linesOf({ items, width }: PageText): Line[] {
     return {
       text: segments.join(" ").trim(),
       x: sorted[0].x,
+      y: sorted[0].y,
       end,
       segments,
       split,
@@ -99,20 +101,27 @@ function linesOf({ items, width }: PageText): Line[] {
 
 function hasTwoColumns(lines: Line[]) {
   const right = Math.max(...lines.map((line) => line.end));
-  const starts = lines.flatMap((line) =>
-    line.split !== null &&
-    right - line.end > 2 &&
-    line.segments.some((segment) => words(segment).length >= 3) &&
-    !line.segments.some(
-      (segment) => DATE.test(segment) || CITY_START.test(segment),
-    )
-      ? [line.split]
-      : [],
+  const height =
+    Math.max(...lines.map((line) => line.y)) -
+    Math.min(...lines.map((line) => line.y));
+  const candidates = lines.filter(
+    (line) =>
+      line.split !== null &&
+      right - line.end > 2 &&
+      line.segments.some((segment) => words(segment).length >= 3) &&
+      !line.segments.some(
+        (segment) => DATE.test(segment) || CITY_START.test(segment),
+      ),
   );
-  return starts.some(
-    (start) =>
-      starts.filter((other) => Math.abs(other - start) <= 2).length >= 5,
-  );
+  return candidates.some((line) => {
+    const aligned = candidates.filter(
+      (other) => Math.abs((other.split ?? 0) - (line.split ?? 0)) <= 2,
+    );
+    const ys = aligned.map((other) => other.y);
+    return (
+      aligned.length >= 5 && Math.max(...ys) - Math.min(...ys) >= height * 0.4
+    );
+  });
 }
 
 function leftMargin(lines: Line[]) {

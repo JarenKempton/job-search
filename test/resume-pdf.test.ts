@@ -148,6 +148,31 @@ describe("PDF layout checks", () => {
     ).toEqual(["Two-column layout"]);
   });
 
+  it("passes a compact keyword grid in a one-column resume", () => {
+    expect(
+      titles([
+        ...header,
+        ...[
+          "Project Management",
+          "Budget Forecasting",
+          "Vendor Relations",
+          "Process Improvement",
+          "Team Leadership",
+          "Risk Assessment",
+        ].map((skill): [number, string, number, string] => [
+          36,
+          `• ${skill}`,
+          330,
+          `• Stakeholder ${skill.split(" ")[1]}`,
+        ]),
+        ...Array.from({ length: 12 }, (): [number, string] => [
+          36,
+          `• ${BODY}`,
+        ]),
+      ]),
+    ).toEqual([]);
+  });
+
   it("flags a PDF with almost no text and stops there", () => {
     expect(titles([[36, "Alex Rivera"]])).toEqual([
       "Almost no selectable text",
