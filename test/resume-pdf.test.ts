@@ -48,6 +48,20 @@ describe("PDF layout checks", () => {
     ).toEqual([]);
   });
 
+  it("passes right-aligned dates and cities and Word symbol bullets", () => {
+    expect(
+      titles([
+        ...header,
+        ...Array.from({ length: 3 }, (): Parameters<typeof page>[0] => [
+          [36, "Acme Corporation", 480, "San Francisco, CA"],
+          [36, "Senior Software Engineer", 480, "Jan 2021 – Present"],
+          [36, ` ${BODY}`],
+          [36, ` ${BODY}`],
+        ]).flat(),
+      ]),
+    ).toEqual([]);
+  });
+
   it("flags drawn bullets, crowded job lines, a wrapped city and section words", () => {
     const findings = layoutFindings([
       page([

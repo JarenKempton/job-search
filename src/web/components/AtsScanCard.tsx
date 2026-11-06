@@ -18,10 +18,10 @@ type Scan = NonNullable<ResumeScanStatus["scan"]>;
 function FindingList({ findings }: { findings: Finding[] }) {
   return (
     <ul className="space-y-3">
-      {findings.map((finding) => {
+      {findings.map((finding, index) => {
         const Icon = finding.severity === "fix" ? CircleAlertIcon : InfoIcon;
         return (
-          <li key={finding.title} className="flex gap-2.5 text-sm">
+          <li key={index} className="flex gap-2.5 text-sm">
             <Icon
               aria-label={finding.severity === "fix" ? "Fix" : "Consider"}
               className={

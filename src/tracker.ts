@@ -344,7 +344,10 @@ export class Tracker extends DurableObject<Env> {
     const result = await askScanner(this.env.AI, resume.text);
     if ("error" in result) {
       if (utcToday() === day)
-        this.ctx.storage.kv.put(RESUME_SCANS, { day, used: known.usedToday });
+        this.ctx.storage.kv.put(RESUME_SCANS, {
+          day,
+          used: Math.max(0, this.scansUsed() - 1),
+        });
       return result.error === "allowance"
         ? failure(
             429,

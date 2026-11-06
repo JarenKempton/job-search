@@ -4,7 +4,7 @@ export type TextItem = { text: string; x: number; y: number; width: number };
 export type PageText = { width: number; items: TextItem[] };
 type Line = { text: string; x: number; end: number; segments: string[] };
 
-const BULLETS = /^[•●○◦▪▫■□‣⁃∙⋅·◆◇►▶➢✓✔*-]/;
+const BULLETS = /^[•●○◦▪▫■□‣⁃∙⋅·◆◇►▶➢✓✔*-]/;
 const DATE =
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4}|\b\d{1,2}\/\d{4}\b|\b(?:19|20)\d{2}\b/i;
 const DATE_RANGE = new RegExp(
@@ -120,7 +120,11 @@ export function layoutFindings(pages: PageText[]): Finding[] {
     return findings;
   }
 
-  const unreadable = allText.match(UNREADABLE)?.length ?? 0;
+  const unreadable =
+    lines
+      .map((line) => line.text.replace(BULLETS, ""))
+      .join("\n")
+      .match(UNREADABLE)?.length ?? 0;
   if (unreadable > 3)
     add(
       "fix",
@@ -140,8 +144,11 @@ export function layoutFindings(pages: PageText[]): Finding[] {
       page.filter(
         (line) =>
           line.segments.length > 1 &&
-          line.segments.some(
-            (segment) => words(segment).length >= 3 && !DATE.test(segment),
+          line.segments.every(
+            (segment) =>
+              words(segment).length >= 3 &&
+              !DATE.test(segment) &&
+              !CITY_START.test(segment),
           ),
       ).length >= 5,
   );
