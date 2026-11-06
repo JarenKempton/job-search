@@ -2,7 +2,13 @@ import type { Finding } from "@/applications/validation";
 
 export type TextItem = { text: string; x: number; y: number; width: number };
 export type PageText = { width: number; items: TextItem[] };
-type Line = { text: string; x: number; end: number; segments: string[] };
+type Line = {
+  text: string;
+  x: number;
+  end: number;
+  segments: string[];
+  split: number | null;
+};
 
 const BULLETS = /^[•●○◦▪▫■□‣⁃∙⋅·◆◇►▶➢✓✔*-]/;
 const DATE =
@@ -68,9 +74,11 @@ function linesOf({ items, width }: PageText): Line[] {
     const segments: string[] = [];
     let text = "";
     let end = sorted[0].x;
+    let split: number | null = null;
     for (const item of sorted) {
       const gap = item.x - end;
       if (gap > width * 0.15) {
+        split ??= item.x;
         segments.push(text.trim());
         text = "";
       } else if (gap > 1 && !/\s$/.test(text) && !/^\s/.test(item.text))
@@ -79,8 +87,32 @@ function linesOf({ items, width }: PageText): Line[] {
       end = item.x + item.width;
     }
     segments.push(text.trim());
-    return { text: segments.join(" ").trim(), x: sorted[0].x, end, segments };
+    return {
+      text: segments.join(" ").trim(),
+      x: sorted[0].x,
+      end,
+      segments,
+      split,
+    };
   });
+}
+
+function hasTwoColumns(lines: Line[]) {
+  const right = Math.max(...lines.map((line) => line.end));
+  const starts = lines.flatMap((line) =>
+    line.split !== null &&
+    right - line.end > 2 &&
+    line.segments.some((segment) => words(segment).length >= 3) &&
+    !line.segments.some(
+      (segment) => DATE.test(segment) || CITY_START.test(segment),
+    )
+      ? [line.split]
+      : [],
+  );
+  return starts.some(
+    (start) =>
+      starts.filter((other) => Math.abs(other - start) <= 2).length >= 5,
+  );
 }
 
 function leftMargin(lines: Line[]) {
@@ -139,17 +171,7 @@ export function layoutFindings(pages: PageText[]): Finding[] {
       "Most ATS read every page, but recruiters skim. Keep it to one or two pages.",
     );
 
-  const twoColumn = pageLines.some(
-    (page) =>
-      page.filter(
-        (line) =>
-          line.segments.length > 1 &&
-          line.segments.some((segment) => words(segment).length >= 3) &&
-          !line.segments.some(
-            (segment) => DATE.test(segment) || CITY_START.test(segment),
-          ),
-      ).length >= 5,
-  );
+  const twoColumn = pageLines.some(hasTwoColumns);
   if (twoColumn)
     add(
       "fix",

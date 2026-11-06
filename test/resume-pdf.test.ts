@@ -95,15 +95,41 @@ describe("PDF layout checks", () => {
     ]);
   });
 
-  it("flags two columns but not right-aligned dates", () => {
+  it("flags two columns by a shared start, not right-aligned details", () => {
+    const right = (text: string) => 576 - text.length * 4.4;
+    const rows = (pairs: Array<[string, string]>): Parameters<typeof page>[0] =>
+      pairs.flatMap(([left, detail]) => [
+        [36, left, right(detail), detail] as [number, string, number, string],
+        [36, `• ${BODY}`] as [number, string],
+      ]);
     expect(
       titles([
         ...header,
-        ...Array.from({ length: 6 }, (): [number, string, number, string] => [
+        ...rows([
+          ["Technical University of Munich", "Munich, Germany"],
+          ["Indian Institute of Science", "Bengaluru, India"],
+          ["Amazon Web Services", "Remote"],
+          ["Bank of America", "Charlotte, North Carolina"],
+          ["University of Texas at Austin", "GPA: 3.9/4.0"],
+          ["Tata Consultancy Services", "Hybrid"],
+        ]),
+      ]),
+    ).toEqual([]);
+    expect(
+      titles([
+        ...header,
+        ...[
+          "Kubernetes, Terraform and AWS",
+          "Postgres and Redis caching",
+          "React, Vite and Tailwind CSS",
+          "Go services on GCP",
+          "CI with GitHub Actions",
+          "Grafana and Prometheus dashboards",
+        ].map((skill): [number, string, number, string] => [
           36,
           "• Shipped features weekly",
           330,
-          "Kubernetes, Terraform and AWS",
+          skill,
         ]),
       ]),
     ).toEqual(["Two-column layout"]);
@@ -111,11 +137,11 @@ describe("PDF layout checks", () => {
       titles([
         ...header,
         ...["TypeScript", "AWS", "Docker", "React", "Postgres", "Go"].map(
-          (skill): [number, string, number, string] => [
+          (skill, index): [number, string, number, string] => [
             36,
             skill,
             200,
-            `• ${BODY.slice(0, 60)}`,
+            `• ${BODY.slice(0, 40 + index * 7)}`,
           ],
         ),
       ]),
